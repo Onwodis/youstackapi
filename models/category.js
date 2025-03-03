@@ -15,6 +15,8 @@ const categorySchema = new mongoose.Schema({
   locked:Boolean,
   mandy: String,
   dmy: String,
+  courses:{type:Number,default:0},
+  students:{type:Number,default:0},
   cdmy: String,
   address:String,
   dateadded:String,
@@ -25,7 +27,7 @@ const categorySchema = new mongoose.Schema({
   lastupdate:String,
   batches: Number,
   leads: Number,
-  students: Number,
+
   progress: {type:Number,default:0},
   dprogress: String,
   oname: String,

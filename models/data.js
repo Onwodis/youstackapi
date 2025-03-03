@@ -12,6 +12,10 @@ function money(amount) {
 const dataSchema = new mongoose.Schema({
   name: { type: String, default: "nil" },
   newestclient: { type: String, default: "nil" },
+  laststudentsignuptime: { type: String, default: "yet to " },
+  lastteachersignuptime: { type: String, default: "yet to " },
+  laststudentsignup: { type: String, default: "yet to " },
+  lastteachersignup: { type: String, default: "yet to " },
   launchedparam: { type: String, default: "nil" },
   newestclienttime: { type: String, default: "nil" },
   newestmarketertime: { type: String, default: "nil" },

@@ -15,6 +15,7 @@ const { nodem } = require('../models/nodemailer');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const Course = require('../models/course');
+const Mycourse = require('../models/mycourse');
 const Category = require('../models/category');
 
 const expiresIn = '2h'; // Token expiration time
@@ -263,8 +264,8 @@ function getDaysBetweenDates(start, end, dayName) {
 }
 function formatDateToCustomString(date) {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
 }
@@ -278,7 +279,614 @@ function addMonths(startDate, months) {
   // Return the result date in a custom format (YYYY-MM-DD)
   return formatDateToCustomString(resultDate);
 }
-
+function getRandomNumber() {
+  return Math.floor(Math.random() * 600) + 1;
+}
+const motivationalStatements = [
+  "Keep coding; every line brings you closer to mastery.",
+  "Innovation begins with a single step. Take it today!",
+  "Embrace challenges; they are your stepping stones to success.",
+  "Your potential is limitless. Keep pushing boundaries.",
+  "Every bug is a lesson. Learn and move forward.",
+  "Success in tech is a marathon, not a sprint.",
+  "Stay curious and keep exploring new technologies.",
+  "Every problem has a solution. Keep searching.",
+  "You are the future of technology. Make it bright!",
+  "Believe in your code and yourself.",
+  "Your perseverance today will shape tomorrow's innovations.",
+  "The world needs your unique tech vision.",
+  "Continuous learning is the key to tech success.",
+  "Your dedication sets you apart. Keep going!",
+  "Every project completed is a milestone achieved.",
+  "Collaborate and grow together in this tech journey.",
+  "Your creativity will drive technological advancements.",
+  "Stay passionate about your tech goals.",
+  "Keep your code clean and your dreams big.",
+  "In tech, every failure is a step to success.",
+  "Your hard work will redefine technology.",
+  "Never stop learning and evolving in tech.",
+  "You have the power to change the tech world.",
+  "Each line of code is a step closer to innovation.",
+  "Your determination will lead to groundbreaking solutions.",
+  "Stay focused and keep building amazing things.",
+  "Your skills will shape the future of technology.",
+  "Believe in the impact of your tech work.",
+  "Keep pushing the boundaries of what's possible.",
+  "Your tech journey is unique and valuable.",
+  "Stay inspired and keep coding with passion.",
+  "Every tech challenge is an opportunity in disguise.",
+  "Your tech skills will create tomorrow's solutions.",
+  "Keep experimenting and discovering new tech paths.",
+  "Your innovation will drive the tech industry forward.",
+  "Stay committed to your tech aspirations.",
+  "Every day coding brings new opportunities.",
+  "Your vision will transform the tech landscape.",
+  "Keep striving for excellence in every project.",
+  "Your persistence will lead to tech breakthroughs.",
+  "Stay curious and explore new tech possibilities.",
+  "Your hard work in tech will pay off.",
+  "Keep building, learning, and growing in tech.",
+  "Your tech skills are your superpower.",
+  "Every effort you make in tech matters.",
+  "Stay motivated and keep your code evolving.",
+  "Your dedication will create future tech innovations.",
+  "Keep dreaming big in the tech world.",
+  "Your passion for tech will lead to success.",
+  "Stay focused and keep your code running.",
+  "Every line of code is a step forward.",
+  "Your tech journey is full of potential.",
+  "Keep coding and keep believing in yourself.",
+  "Your determination will lead to tech greatness.",
+  "Stay positive and keep building amazing things.",
+  "Your tech skills will change the world.",
+  "Keep pushing forward and embrace every challenge.",
+  "Your hard work will shape the future of tech.",
+  "Stay motivated and keep your tech dreams alive.",
+  "Your persistence will lead to tech success.",
+  "Keep exploring and innovating in the tech world.",
+  "Your vision will create a better tech future.",
+  "Stay passionate and keep your code clean.",
+  "Every tech challenge is a growth opportunity.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+  "Stay passionate and keep your code running.",
+  "Every tech challenge is an opportunity for growth.",
+  "Your dedication will lead to tech advancements.",
+  "Keep coding and stay inspired every day.",
+  "Your tech skills are a valuable asset.",
+  "Stay focused and keep building great things.",
+  "Your determination will lead to tech achievements.",
+  "Keep learning and growing in your tech journey.",
+  "Your innovation will drive future technologies.",
+  "Stay committed to your tech goals.",
+  "Every line of code brings new possibilities.",
+  "Your persistence will create tech solutions.",
+  "Keep dreaming and building in the tech world.",
+  "Your passion for tech will lead to innovation.",
+  "Stay curious and keep coding with purpose.",
+  "Your dedication will transform the tech industry.",
+  "Keep pushing the limits of technology.",
+  "Your hard work will result in tech breakthroughs.",
+  "Stay inspired and keep your code evolving.",
+  "Your tech journey is full of opportunities.",
+  "Keep believing in the power of your code.",
+  "Your determination will lead to tech success.",
+  "Stay positive and keep building your tech dreams.",
+  "Your tech skills will shape the future.",
+  "Keep pushing forward and embracing challenges.",
+  "Your dedication will lead to tech greatness.",
+  "Stay motivated and keep your tech vision alive.",
+  "Your persistence will create groundbreaking solutions.",
+  "Keep exploring and innovating in technology.",
+  "Your vision will transform the tech landscape.",
+];
+const motivate = motivationalStatements[getRandomNumber()];
 function getDatesBetweenb(start, end, dayOfWeeka, dayOfWeekb, y, z) {
   const daysOfWeekMap = {
     mon: 1,
@@ -370,15 +978,15 @@ function human(isoDateStr) {
   date.setTime(date.getTime() - 60 * 60 * 1000);
 
   // Convert to human-readable format
-  return date.toLocaleString("en-US", {
-    weekday: "long", // Full weekday name
-    year: "numeric", // Full year
-    month: "long", // Full month name
-    day: "numeric", // Day of the month
-    hour: "numeric", // Hour (12-hour format)
-    minute: "numeric", // Minutes
-    second: "numeric", // Seconds
-    timeZoneName: "short", // Time zone abbreviation
+  return date.toLocaleString('en-US', {
+    weekday: 'long', // Full weekday name
+    year: 'numeric', // Full year
+    month: 'long', // Full month name
+    day: 'numeric', // Day of the month
+    hour: 'numeric', // Hour (12-hour format)
+    minute: 'numeric', // Minutes
+    second: 'numeric', // Seconds
+    timeZoneName: 'short', // Time zone abbreviation
   });
 }
 function bdp(dateString) {
@@ -412,29 +1020,29 @@ function ord(number) {
 
   // Determine the suffix based on the number
   if (
-    lastTwoDigits === "11" ||
-    lastTwoDigits === "12" ||
-    lastTwoDigits === "13"
+    lastTwoDigits === '11' ||
+    lastTwoDigits === '12' ||
+    lastTwoDigits === '13'
   ) {
-    return number + "th";
+    return number + 'th';
   }
 
   switch (lastDigit) {
-    case "1":
-      return number + "st";
-    case "2":
-      return number + "nd";
-    case "3":
-      return number + "rd";
+    case '1':
+      return number + 'st';
+    case '2':
+      return number + 'nd';
+    case '3':
+      return number + 'rd';
     default:
-      return number + "th";
+      return number + 'th';
   }
 }
 function sume(array, key) {
   // Use the reduce method to accumulate the sum
   return array.reduce((accumulator, currentObject) => {
     // Check if the current object has the specified key and its value is a number
-    if (currentObject[key] && typeof currentObject[key] === "number") {
+    if (currentObject[key] && typeof currentObject[key] === 'number') {
       return accumulator + currentObject[key];
     }
     // If the key doesn't exist or the value is not a number, just return the accumulator
@@ -1028,39 +1636,42 @@ const reactIntroductionTest = [
     ],
   },
 ];
-const categg= [
+const categg = [
   {
-    name:"Web development",
-    ccid:1,image:"webdev.jpg",
-    catid:"categ4565768",
-    desc:"Learn various web development methodologies"
+    name: 'Web development',
+    ccid: 1,
+    image: 'webdev.jpg',
+    catid: 'categ4565768',
+    desc: 'Learn various web development methodologies',
   },
   {
-    name:"Business",
-    ccid:2,image:"business.jpg",
-    catid:"cate1234568",
-    desc:"Learn various Business methodologies"
+    name: 'Business',
+    ccid: 2,
+    image: 'business.jpg',
+    catid: 'cate1234568',
+    desc: 'Learn various Business methodologies',
   },
   {
-    name:"Marketing",
-    ccid:3,image:"marketing.jpg",
-    catid:"categ40033768",
-    desc:"Learn various Marketing methodologies"
+    name: 'Marketing',
+    ccid: 3,
+    image: 'marketing.jpg',
+    catid: 'categ40033768',
+    desc: 'Learn various Marketing methodologies',
   },
   {
-    name:"Design",
-    ccid:4,image:"design.jpg",
-    catid:"categ45853768",
-    desc:"Learn various Design methodologies"
+    name: 'Design',
+    ccid: 4,
+    image: 'design.jpg',
+    catid: 'categ45853768',
+    desc: 'Learn various Design methodologies',
   },
-
-
-]
+];
 const savedcourses = [
   {
     name: 'React',
-    category:"Web Development",
-    ccid:1,
+    category: 'Web Development',
+    sdesc: 'Master React and build dynamic web applications.',
+    ccid: 1,
     image: process.env.api + 'club/rnative.png',
     topics: [
       {
@@ -1092,8 +1703,9 @@ const savedcourses = [
   },
   {
     name: 'Node.js',
-    ccid:1,
+    ccid: 1,
     image: process.env.api + 'club/node.png',
+    sdesc: 'Learn Node.js to create scalable backend services.',
     topics: [
       {
         topic: 'Introduction to Node.js',
@@ -1125,7 +1737,8 @@ const savedcourses = [
   {
     name: 'Cybersecurity',
     image: process.env.api + 'club/cybb.jpeg',
-    ccid:1,
+    ccid: 1,
+    sdesc: 'Explore cybersecurity and protect digital systems.',
 
     topics: [
       {
@@ -1169,7 +1782,8 @@ const savedcourses = [
   },
   {
     name: 'PHP',
-    ccid:1,
+    ccid: 1,
+    sdesc: 'Get started with PHP for web development.',
 
     image: process.env.api + 'club/phpresized.jpg',
     topics: [
@@ -1206,8 +1820,9 @@ const savedcourses = [
   },
   {
     name: 'Python',
-    ccid:1,
+    ccid: 1,
     image: process.env.api + 'club/python.jpg',
+    sdesc: 'Learn Python for data science, automation, and web development.',
     topics: [
       {
         topic: 'Introduction to Python',
@@ -1234,7 +1849,8 @@ const savedcourses = [
   },
   {
     name: 'Web Development (Front-end)',
-    ccid:1,
+    ccid: 1,
+    sdesc: 'Become proficient in front-end web development.',
 
     image: process.env.api + 'club/fend.jpeg',
     topics: [
@@ -1267,7 +1883,8 @@ const savedcourses = [
   },
   {
     name: 'Project Management',
-    ccid:2,
+    ccid: 2,
+    sdesc: 'Develop project management skills for successful execution.',
 
     image: process.env.api + 'club/projectmanagement.jpeg',
     topics: [
@@ -1312,7 +1929,8 @@ const savedcourses = [
   },
   {
     name: 'Digital Marketing',
-    ccid:3,
+    sdesc: 'Master digital marketing strategies to grow businesses.',
+    ccid: 3,
 
     image: process.env.api + 'club/dm.jpg',
     topics: [
@@ -1351,7 +1969,8 @@ const savedcourses = [
   },
   {
     name: 'Data Science',
-    ccid:2,
+    ccid: 2,
+    sdesc: 'Dive into data science and uncover valuable insights.',
 
     image: process.env.api + 'club/datana.jpeg',
     topics: [
@@ -1400,7 +2019,8 @@ const savedcourses = [
   },
   {
     name: 'Django',
-    ccid:1,
+    ccid: 1,
+    sdesc: 'Learn Django to build powerful web applications.',
 
     image: process.env.api + 'club/django.jpg',
     topics: [
@@ -1440,8 +2060,9 @@ const savedcourses = [
     desc: "Django is a high-level Python web framework that enables rapid development of secure and maintainable websites. It follows the 'batteries-included' philosophy and comes with a variety of built-in features for web development.",
   },
   {
-    ccid:1,
+    ccid: 1,
     name: 'Ruby on Rails',
+    sdesc: 'Build scalable web applications with Ruby on Rails.',
     image: process.env.api + 'club/ror.jpeg',
     topics: [
       {
@@ -1476,8 +2097,9 @@ const savedcourses = [
     desc: 'Ruby on Rails is a web application framework written in Ruby. It emphasizes convention over configuration and follows the MVC pattern to create dynamic web applications with ease.',
   },
   {
-    ccid:1,
+    ccid: 1,
     name: 'GraphQL',
+    sdesc: 'Master GraphQL for efficient API development.',
     image: process.env.api + 'club/graphql.jpeg',
     topics: [
       {
@@ -1516,9 +2138,10 @@ const savedcourses = [
     desc: 'GraphQL is a query language for APIs and a server-side runtime for executing queries by specifying the structure of the response. It allows clients to request only the data they need and nothing more.',
   },
   {
-    ccid:1,
+    ccid: 1,
     name: 'Java',
     image: process.env.api + 'club/java.jpg',
+    sdesc: 'Master Java for building robust applications.',
     topics: [
       {
         topic: 'Introduction to Java',
@@ -1547,10 +2170,12 @@ const savedcourses = [
     ],
     desc: 'Java is a high-level, class-based programming language that is designed to have as few implementation dependencies as possible. It is widely used for building cross-platform applications, from mobile apps to enterprise systems.',
   },
-  
+
   {
-    name: 'Flutter',ccid:1,
+    name: 'Flutter',
+    ccid: 1,
     image: process.env.api + 'club/flutter-3.png',
+    sdesc: 'Create cross-platform mobile apps using Flutter.',
     topics: [
       {
         topic: 'Introduction to Flutter',
@@ -1588,7 +2213,9 @@ const savedcourses = [
     desc: 'Flutter is an open-source UI software development toolkit created by Google for building natively compiled applications for mobile, web, and desktop from a single codebase.',
   },
   {
-    name: 'Docker',ccid:1,
+    name: 'Docker',
+    ccid: 1,
+    sdesc: 'Master Java for building robust applications.',
     image: process.env.api + 'club/docker.jpg',
     topics: [
       {
@@ -1651,22 +2278,567 @@ const savedcourses = [
     desc: 'Docker is a platform for developing, shipping, and running applications in containers. It allows developers to package applications with all dependencies into a standardized unit for software development, simplifying deployment and scaling.',
   },
 ];
+
 async function wdd() {
   const courses = await Course.find();
-  
 }
-const reset = async (req, res) => {};
+const reset = async (req, res) => {
+  const ddata = await Data.findOne({ isdata: true });
+  const coses = await Course.find();
+  ddata.launchedparam = 'trashdwe';
+  // await ddata.save()
+
+  console.log('job done' + coses);
+};
+const gradecat = async (req, res) => {
+
+ const cats = await Category.find();
+ if(cats && cats.length > 0){
+  for(let i =0 ; i <cats.length ; i++){
+    const cat =cats[i]
+    const courses = await Course.countDocuments({catid:cat.catid,deployed :true})
+    cat.courses = courses
+    await cat.save()
+  }
+ }
+
+
+}
+// gradecat()
+const resetb = async (req, res) => {
+  let email = process.env.sadmin_samemail
+  let resettimes = 0;
+
+  const getdata = await Data.findOne({isdata:true });
+  resettimes = getdata.resettimes;
+
+  await User.deleteMany();
+
+  await Course.deleteMany();
+
+  await Teacher.deleteMany();
+  await Category.deleteMany();
+  // await Action.deleteMany();
+  await Actionb.deleteMany();
+
+  await Topic.deleteMany();
+  // await Curri.deleteMany();
+  await Transact.deleteMany();
+
+  const hpwrda = await bcrypt.hash('cdr112233', 10);
+  const ta = {
+    name: 'Samuel',
+    fname: 'Samuel O',
+    lname: 'Chukwuemeka',
+    admin: false,
+    firstemail: 'samuelonwodi@gmail.com',
+    email: 'samuelonwodi@gmail.com',
+    ttt: 0,
+    ttm: 0,
+    ttmandy: '9:2024',
+    attendance: 0,
+
+    specialty: 'Engineering',
+    education: 'Msc',
+    addedby: 'Samuel Onwodi',
+    physical: 'nil',
+    addedbyid: 'youstack1614487',
+    licenseid: 'lic194414',
+    level: 'senior',
+    ordstring: new Date(),
+    pwrd: hpwrda,
+    pwrdb: 'cdr112233',
+    profit: 0,
+    dprofit: '₦ 0.00',
+    lmonths: 5,
+    humanexpiry: 'Mon Feb 17 2025',
+    javexpiry: new Date(),
+    logindmytimes: 0,
+    licensed: true,
+    image: `${process.env.api}teachers/sam.png`,
+    gender: 'male',
+    registered: 'Tue Sep 17 2024',
+    regDate: new Date(),
+    phone: '0813034832',
+    lastseen: 'Tues,9/17/2024, 11:45:01 PM',
+
+    male: true,
+    female: false,
+    logintimes: 0,
+    total: 0,
+    userid: 'cdr101503776',
+    mandy: mandy(),
+    cmandy: mandy(),
+    dmy: dmy(),
+
+    restricted: false,
+    twd: 0,
+    mwd: 0,
+    awd: 0,
+    leadsort: 'asc',
+    transort: 'newest',
+    studsort: 'asc',
+    dreg: 'today',
+    ballowide: true,
+    allowide: true,
+    idetime: '',
+    myide:
+      'welcome to Youstack integerated develpoment environment',
+    online: true,
+    passtimes: 0,
+
+    dprogress: '0%',
+    progress: 0,
+    totaltopics: 0,
+    tableitems: 20,
+    allowinstallments: true,
+    dmininstallment: '₦ 30,000.00',
+    mininstallment: 30000,
+    acos: false,
+    idle: 85,
+    logindmy: '',
+
+    motivate: 'Keep believing in the power of your code.',
+    motivatedmy: '',
+    newlogin: 'nil',
+    rating: 0,
+    lastlogin: 'nil',
+    allowcc: true,
+
+    type: 'teacher',
+    desc: 'He is a good teacher',
+    isTeacher: true,
+    bid: 'sch1291496',
+    ttt: 0,
+    ttm: 0,
+    ttmandy: '9:2024',
+    attendance: 0,
+    comp: 0,
+    uncomp: 0,
+
+    specialty: 'Medicine',
+    education: 'Phd',
+    addedby: 'youbrain(r)',
+    physical: 'nil',
+    addedbyid: 'youstack914487',
+    licenseid: 'lic161745',
+    level: 'senior',
+    ordstring: new Date(),
+  };
+  const hpwrdb = await bcrypt.hash('cdr332211', 10);
+
+  const tb = {
+    name: 'Smith  Harper',
+    fname: 'Smith ',
+    lname: 'Harper',
+    firstemail: 'Smith@yahoo.com',
+    email: 'Smith@yahoo.com',
+    ttt: 0,
+    ttm: 0,
+    ttmandy: '9:2024',
+    attendance: 0,
+
+    specialty: 'Engineering',
+    education: 'Msc',
+    addedby: 'Samuel Onwodi',
+    physical: 'nil',
+    addedbyid: 'youstack16714487',
+    licenseid: 'lic1994414',
+    level: 'senior',
+    ordstring: new Date(),
+
+    profit: 0,
+    dprofit: '₦ 0.00',
+    lmonths: 5,
+    humanexpiry: 'Mon Feb 17 2025',
+    javexpiry: new Date(),
+    logindmytimes: 0,
+    licensed: true,
+    image: `${process.env.api}teachers/noimage.png`,
+    gender: 'male',
+    registered: 'Tue Sep 17 2024',
+    regDate: new Date(),
+    phone: '0813034832',
+    lastseen: 'Tues,9/17/2024, 1:45:34 PM',
+
+    male: true,
+    female: false,
+    logintimes: 0,
+    total: 0,
+    userid: 'cdr199776',
+    mandy: mandy(),
+    cmandy: mandy(),
+    dmy: dmy(),
+
+    restricted: false,
+    twd: 0,
+    mwd: 0,
+    awd: 0,
+    leadsort: 'asc',
+    transort: 'newest',
+    studsort: 'asc',
+    dreg: 'today',
+    ballowide: true,
+    allowide: true,
+    idetime: '',
+    myide:
+      'welcome to Youstack integerated develpoment environment',
+    online: true,
+    passtimes: 0,
+
+    dprogress: '0%',
+    progress: 0,
+    totaltopics: 0,
+    tableitems: 20,
+    allowinstallments: true,
+    dmininstallment: '₦ 30,000.00',
+    mininstallment: 30000,
+    acos: false,
+    idle: 45,
+    logindmy: '',
+
+    motivate: 'Keep believing in the power of your code.',
+    motivatedmy: '',
+    newlogin: 'nil',
+    rating: 0,
+    lastlogin: 'nil',
+    allowcc: true,
+
+    type: 'teacher',
+    desc: 'He teaches well .',
+    isTeacher: true,
+    bid: 'sch1291496',
+    ttt: 0,
+    ttm: 0,
+    ttmandy: '9:2024',
+    attendance: 0,
+    comp: 0,
+    uncomp: 0,
+
+    specialty: 'Engineering',
+    education: 'Phd',
+    addedby: 'youbrain(r)',
+    physical: 'nil',
+    addedbyid: 'youbrain',
+    licenseid: 'lic169445',
+    level: 'senior',
+    ordstring: new Date(),
+    pwrd: hpwrdb,
+    pwrdb: 'cdr332211',
+  };
+  const teas = [ta, tb];
+  for (let i = 0; i < teas.length; i++) {
+    let ttt = teas[i];
+
+    await User.create({
+      isTeacher: true,
+      fname: ttt.name,
+      type: 'teacher',
+      gender: ttt.gender,
+      comp: 0,
+      ttm: 0,
+      rating: 0,
+      ttt: 0,
+      ttmandy: mandy(),
+      uncomp: 0,
+      topics: 0,
+      students: 0,
+      batches: 0,
+      courses: 0,
+      logindmytimes: 0,
+      male: ttt.male,
+      female: ttt.female,
+      lname: ttt.lname,
+      physical: 'nil',
+      level: ttt.level,
+      phone: ttt.phone,
+      desc: ttt.desc,
+      name: ttt.name,
+      email: ttt.email,
+      firstemail: ttt.email,
+      addedby: ttt.addedby,
+      addedbyid: 'youbrain',
+      licensed: true,
+      profit: 0,
+      dprofit: money(0),
+      licenseid: 'lic' + getserialnum(100000),
+      restricted: false,
+      lmonths: 5,
+      humanexpiry: human(),
+      image: ttt.image,
+      ordstring: new Date(),
+      mandy: mandy(),
+      cmandy: mandy(),
+      dmy: dmy(),
+      cdmy: dmy(),
+      registered: new Date().toDateString(),
+      regDate: new Date(),
+      javexpiry: ttt.javexpiry,
+
+      education: ttt.education,
+      specialty: ttt.specialty,
+      phone: ttt.phone,
+      pwrd: ttt.pwrd,
+      pwrdb: ttt.pwrdb,
+      dprofit: money(0),
+      userid: ttt.userid,
+      logintimes: 0,
+      profit: 0,
+      total: 0,
+      lastseen: 'nil',
+      logindmytimes: 0,
+      attendance: 0,
+    });
+  }
+  const nc = savedcourses;
+
+  for (let i = 0; i < nc.length; i++) {
+    console.log(nc.length + ' is nc length');
+    const coslength = await Course.countDocuments();
+    const tea = (i + 1) % 2 === 1 ? ta : tb;
+    const cos = nc[i];
+    const topics = cos.topics;
+    const tid = tea.userid;
+    const cid = 'cos' + getserialnum(100000);
+    const catg = categg.find((el) => el.ccid === cos.ccid);
+    console.log(catg.name + '  is category name ' + i, cos.ccid);
+    await Course.create({
+      name: capitalise(cos.name),
+      tid,dummy:true,
+      sdesc: cos.sdesc,
+      category: catg.name,
+      catid: catg.catid,
+      ccid: catg.ccid,
+      teacherid: tid,
+      mstudents: 0,
+      locked: false,
+      addedbytype: 'youbrain',
+      addedby: 'youbrain',
+      addedbyid: 'youbrain',
+      teacher: tea.name,
+      duration: 3,
+      topics: topics.length,
+      batches: 0,
+      lastedit: 'nil',
+      lasteditby: 'nil',
+      lastedittime: 'nil',
+      timesedited: 0,
+      attendance: 0,
+      students: 0,
+      durationm: '3 months',
+      cid,
+      intro: '',
+      introlink: '',
+      desc: cos.desc,
+      profit: 0,
+      dprofit: money(0),
+      drev: money(0),
+      rev: 0,
+      drev: money(0),
+      price: 300000,
+      deployed: true,
+      dprice: money(300000),
+      ordstring: new Date(),
+      created: new Date(),
+      createddate: currentDate(),
+      lastpaid: '',
+      sn: coslength + 1,
+      students: 0,
+
+      image: cos.image,
+    });
+    for (let i = 0; i < topics.length; i++) {
+      const top = topics[i];
+      const title = top.topic;
+      const subtopic = top.subtopics;
+      const cd = await Topic.countDocuments({ cid });
+
+      await Topic.create({
+        cid,
+        title,
+        subtopic: subtopic.join(','),
+        cname: cos.name,
+        editedby: 'nil',
+        lastedit: 'nil',
+        lasteditby: 'nil',
+        lastedittime: 'nil',
+        timesedited: 0,
+        createdby: 'youbrain',
+
+        ordstring: new Date(),
+        created: new Date(),
+        createddate: currentDate(),
+
+        serial: cd + 1,
+        sn: cd + 1,
+        topics: 0,
+        topid: 'top' + getserialnum(100000),
+
+        lastedit: 'nil',
+        lasteditby: 'nil',
+        lastedittime: 'nil',
+        timesedited: 0,
+
+        ordstring: new Date(),
+        created: new Date(),
+        createddate: currentDate(),
+
+        image: cos.image,
+      });
+    }
+  }
+  for (let i = 0; i < categg.length; i++) {
+    const cato = categg[i];
+    await Category.create({
+      category: cato.name,
+      name: cato.name,
+      catid: cato.catid,
+      ccid: cato.ccid,
+      desc: cato.desc,
+      ordstring: new Date(),
+      createdby: email,
+      image: process.env.api + `categories/${cato.image}`,
+    });
+  }
+
+  let who = email;
+
+  const slave = 'youbrain';
+  const when = currentDate();
+
+  const actionid = 'act' + getserialnum(100000);
+  const opid = 'op' + getserialnum(100000);
+  const story = `${who} reset youbrain on ${currentDate()} the ${ord(
+    resettimes + 1
+  )}`;
+  const slavestory = `youbrain was reset by ${who} on ${currentDate()}`;
+  const masterstory = `I reset youbrain on ${currentDate()}`;
+  const tusers = await User.find();
+  for (let i = 0; i < tusers.length; i++) {
+    const yu = tusers[i];
+    yu.cc = 10000;
+    await yu.save();
+  }
+
+  await Action.create({
+    master: who,
+    masterid: 'no id',
+    slave: 'youbrain',
+    slaveid: 'youbrain',
+    actionid,
+    serious: true,
+    opid,
+    mandy: mandy(),
+    dmy: mandy(),
+    when,
+    masterfirstemail: who,
+    slavefirstemail: slave,
+    slavestory,
+    story,
+    masterstory,
+    mastertype: 'admin',
+    slavetype: 'youbrain',
+    masterimage: 'youbrain',
+    slaveimage: 'youbrain',
+    ordstring: new Date(),
+    ifhost: true,
+    actiontype: 'admin to ' + slave,
+  });
+  wdd();
+  const pwrda = process.env.sam_pwrd;
+  const nhpwrda = await bcrypt.hash(pwrda, 10);
+  const pwrdb = process.env.dav_pwrd;
+  const nhpwrdb = await bcrypt.hash(pwrdb, 10);
+
+  await User.create({
+    name: process.env.sam_name,
+    email: process.env.sam_email,
+    address: process.env.sam_address,
+    pwrd: nhpwrda,
+    pwrdb: pwrda,
+    licensed:true,
+    admin: true,
+    sadmin: true,
+    cudaccess: true,
+    userid: 'adm'+getserialnum(10000),
+    type:"admin",
+  });
+  await User.create({
+    name: process.env.dav_name,
+    email: process.env.dav_email,
+    address: process.env.dav_address,
+    pwrd: nhpwrdb,
+    pwrdb: pwrdb,
+    licensed:true,type:"admin",
+    admin: true,
+    sadmin: true,
+    cudaccess: true,
+    userid: 'adm'+getserialnum(10000)
+  });
+  getdata.launchedparam = process.env.launchedparam;
+  getdata.usereset = getdata.usereset + 1;
+  getdata.lastreset = currentDate();
+  getdata.lastresetby = email;
+  await getdata.save();
+  gradecat()
+
+
+
+
+};
+resetb();
+const sumByKey = (array, key) => {
+  return array.reduce((sum, item) => sum + (item[key] || 0), 0);
+};
+const clean = async (req, res) => {
+  const ddata = await Data.findOne({ isdata: true });
+  const courses = await Course.find();
+  const categories = await Category.find();
+  const depcourses = await Course.find({ deployed: true });
+  for (let i = 0; i < depcourses.length; i++) {
+    const cos = depcourses[i];
+    const cn = await Mycourse.countDocuments({ cid: cos.cid });
+    cos.students = cn;
+    await cos.save();
+  }
+  for (let i = 0; i < categories.length; i++) {
+    const cat = categories[i];
+    const cn = await Course.find({ catid: cat.catid });
+    cat.courses = cn.length;
+    cat.students = sumByKey(cn, 'students');
+    await cat.save();
+  }
+
+  // await ddata.save()
+
+  console.log('data aggregation was successful');
+};
+// clean()
+function genr(n) {
+  // Ensure n is a positive integer greater than 0
+  if (n <= 0) return "Invalid input";
+
+  // Calculate the minimum and maximum values for the given number of digits
+  const min = Math.pow(10, n - 1); // Smallest n-digit number
+  const max = Math.pow(10, n) - 1; // Largest n-digit number
+
+  // Generate a random number between min and max
+  const randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
+
+  return randomNum;
+}
+
 module.exports = {
   resetinfull: async (req, res) => {
-    const { usereset,email } = req.headers;
-    console.log('finally resetting '+email);
-    let resettimes = 0 
+    const { usereset, email } = req.headers;
+    console.log('finally resetting ' + email);
+    let resettimes = 0;
 
     const getdata = await Data.findOne({ usereset });
     if (!getdata) {
       res.json({ success: true, nouserest: true });
     } else {
-      resettimes = getdata.resettimes
+      resettimes = getdata.resettimes;
       // await Games.deleteMany();
 
       await User.deleteMany();
@@ -1699,7 +2871,7 @@ module.exports = {
         education: 'Msc',
         addedby: 'Samuel Onwodi',
         physical: 'nil',
-        addedbyid: 'mikptech1614487',
+        addedbyid: 'youstack1614487',
         licenseid: 'lic194414',
         level: 'senior',
         ordstring: new Date(),
@@ -1740,7 +2912,7 @@ module.exports = {
         allowide: true,
         idetime: '',
         myide:
-          'welcome to Mikptech Innovations integerated develpoment environment',
+          'welcome to Youstack integerated develpoment environment',
         online: true,
         passtimes: 0,
 
@@ -1777,7 +2949,7 @@ module.exports = {
         education: 'Phd',
         addedby: 'youbrain(r)',
         physical: 'nil',
-        addedbyid: 'mikptech914487',
+        addedbyid: 'youstack914487',
         licenseid: 'lic161745',
         level: 'senior',
         ordstring: new Date(),
@@ -1799,7 +2971,7 @@ module.exports = {
         education: 'Msc',
         addedby: 'Samuel Onwodi',
         physical: 'nil',
-        addedbyid: 'mikptech16714487',
+        addedbyid: 'youstack16714487',
         licenseid: 'lic1994414',
         level: 'senior',
         ordstring: new Date(),
@@ -1839,7 +3011,7 @@ module.exports = {
         allowide: true,
         idetime: '',
         myide:
-          'welcome to Mikptech Innovations integerated develpoment environment',
+          'welcome to Youstack integerated develpoment environment',
         online: true,
         passtimes: 0,
 
@@ -1889,7 +3061,7 @@ module.exports = {
 
         await User.create({
           isTeacher: true,
-          fname: ttt.name,
+          fname: ttt.name,licensed:true,
           type: 'teacher',
           gender: ttt.gender,
           comp: 0,
@@ -1957,14 +3129,16 @@ module.exports = {
         const topics = cos.topics;
         const tid = tea.userid;
         const cid = 'cos' + getserialnum(100000);
-        const catg = categg.find((el)=>el.ccid === cos.ccid)
-        console.log(catg.name +"  is category name "+ i , cos.ccid)
+        const catg = categg.find((el) => el.ccid === cos.ccid);
+        console.log(catg.name + '  is category name ' + i, cos.ccid);
         await Course.create({
           name: capitalise(cos.name),
           tid,
-          category:catg.name,
-          catid:catg.catid,
-          ccid:catg.ccid,
+          dummy:true,
+          sdesc: cos.sdesc,
+          category: catg.name,
+          catid: catg.catid,
+          ccid: catg.ccid,
           teacherid: tid,
           mstudents: 0,
           locked: false,
@@ -2043,24 +3217,21 @@ module.exports = {
           });
         }
       }
-      for(let i =0 ; i < categg.length ; i++){
-
-        const cato = categg[i]
+      for (let i = 0; i < categg.length; i++) {
+        const cato = categg[i];
         await Category.create({
-          category:cato.name,
-          name:cato.name,
-          catid:cato.catid,
-          ccid:cato.ccid,
-          desc:cato.desc,
-          ordstring:new Date(),
-          createdby:email,
-          image:process.env.api + `categories/${cato.image}`,
-        })
-
+          category: cato.name,
+          name: cato.name,
+          catid: cato.catid,
+          ccid: cato.ccid,
+          desc: cato.desc,
+          ordstring: new Date(),
+          createdby: email,
+          image: process.env.api + `categories/${cato.image}`,
+        });
       }
-      
 
-      let who = email
+      let who = email;
 
       const slave = 'youbrain';
       const when = currentDate();
@@ -2104,31 +3275,205 @@ module.exports = {
         actiontype: 'admin to ' + slave,
       });
       wdd();
-      const pwrda = process.env.sam_pwrd
-      const nhpwrda = await bcrypt.hash(pwrda, 10)
+      const pwrda = process.env.sam_pwrd;
+      const nhpwrda = await bcrypt.hash(pwrda, 10);
+      const pwrdb = process.env.dav_pwrd;
+      const nhpwrdb = await bcrypt.hash(pwrdb, 10);
 
       await User.create({
-        name:process.env.sam_name,
-        email:process.env.sam_email,
-        address:process.env.sam_address,
-        pwrd:nhpwrda,
-        pwrdb:pwrda,
-        admin:true,
-        sadmin:true,
-      })
-      getdata.launchedparam = process.env.launchedparam
-      getdata.usereset = getdata.usereset + 1
-      getdata.lastreset = currentDate()
-      getdata.lastresetby = email
-      await getdata.save()
+        name: process.env.sam_name,
+        email: process.env.sam_email,
+        address: process.env.sam_address,
+        pwrd: nhpwrda,type:"admin",
+        pwrdb: pwrda,
+        admin: true,
+        sadmin: true,
+        licensed:true,
+        cudaccess: true,
+        userid: 'adm'+getserialnum(10000)
+      });
+      await User.create({
+        name: process.env.dav_name,
+        email: process.env.dav_email,
+        address: process.env.dav_address,
+        pwrd: nhpwrdb,type:"admin",
+        licensed:true,
+        pwrdb: pwrdb,
+        admin: true,
+        sadmin: true,
+        cudaccess: true,
+        userid: 'adm'+getserialnum(10000)
+      });
+      getdata.launchedparam = process.env.launchedparam;
+      getdata.usereset = getdata.usereset + 1;
+      getdata.lastreset = currentDate();
+      getdata.lastresetby = email;
+      await getdata.save();
 
-      const categories = await Category.find().sort({name:1})
-      const courses= await Course.find().limit(12).sort({name:1})
-   
-      
+      const categories = await Category.find().sort({ name: 1 });
+      const courses = await Course.find().limit(12).sort({ name: 1 });
 
-      res.json({ success: true ,categories,courses});
+      res.json({ success: true, categories, courses });
+    }
+  },
+  login: async (req, res) => {
+    // await User.deleteMany({brid: { $exists: false}})
 
+    const { email, pwrd } = req.body;
+    const ddata = await Data.findOne({ isdata: true });
+    console.log(pwrd, email, ddata.isdata);
+
+    const user = await User.findOne({ email });
+    if (user) {
+      console.table(ddata);
+      const ifp = await bcrypt.compare(pwrd, user.pwrd);
+      if (ifp) {
+        if (user.licensed) {
+          // const acos = await Mycourse.find({ userid: user.userid });
+          let logindmytimes = user.logindmytimes;
+          user.ccode = genr(6);
+          await user.save();
+          if (user.logindmy == dmy()) {
+            logindmytimes = logindmytimes + 1;
+          } else {
+            logindmytimes = 1;
+          }
+
+          console.log("login times is " + logindmytimes);
+          const time = ord(logindmytimes);
+
+          // user.lastseen = currentDate();
+          user.motivate = user.motivatedmy == dmy() ? user.motivate : motivate;
+          user.motivatedmy =
+          user.motivatedmy == dmy() ? user.motivatedmy : dmy();
+          user.lastlogin = user.newlogin;
+          user.newlogin = currentDate();
+          user.logindmytimes = logindmytimes;
+          user.logindmy = dmy();
+          user.idle = ddata.idle;
+          user.loginord = currentDate();
+          user.lastseen = currentDate();
+          user.lordstring = new Date();
+
+          user.logintimes = user.logintimes + 1;
+          await user.save();
+          ddata.latestloginplayertime = currentDate();
+          ddata.latestloginplayer = user.name;
+          await ddata.save();
+          console.log("about to login " + currentDate());
+          const stoken = {
+            email,
+            userid: user.userid,
+          };
+
+          if (user.isStudent) {
+            const whichadmin = user;
+            const slave = "youbrain";
+            const when = currentDate();
+
+            const actionid = "act" + getserialnum(100000);
+            const opid = "op" + getserialnum(100000);
+            const story = `${capitalise(whichadmin.name)} (${capitalise(
+              whichadmin.type
+            )}) logged in to youbrain for the ${time} time today`;
+            const slavestory = `${capitalise(whichadmin.name)} logged in to me`;
+            const masterstory = `I logged into my youbrain account for the ${time} time today`;
+
+            await Actionb.create({
+              master: whichadmin.name,
+              masterid: whichadmin.userid,
+              slave: "youbrain",
+              slaveid: "youbrainid",
+              actionid,
+              branch: user.branch,
+              brid: user.brid,
+              batch: user.batch,
+              course: user.cname,
+              opid,
+              mandy: mandy(),
+              dmy: mandy(),
+              when,
+              masterfirstemail: whichadmin.firstemail,
+              slavefirstemail: " youstackemail",
+              slavestory,
+              story,
+              masterstory,
+              mastertype: whichadmin.type,
+              slaveype: "youbrain",
+              masterimage: whichadmin.image,
+              slaveimage: "",
+              ordstring: new Date(),
+              ifhost: whichadmin.host ? true : false,
+              actiontype: whichadmin.type + " to youbrain",
+            });
+            lic();
+          } else {
+            console.log(user.name)
+            const whichadmin = user;
+            const slave = "youbrain";
+            const when = currentDate();
+
+            const actionid = "act" + getserialnum(100000);
+            const opid = "op" + getserialnum(100000);
+            const story = `${capitalise(whichadmin.name)} (${capitalise(
+              whichadmin.type
+            )}) logged in to youbrain for the ${time} time today`;
+            const slavestory = `${capitalise(whichadmin.name)} logged in to me`;
+            const masterstory = `I logged into my youbrain account for the ${time} time today`;
+
+            await Action.create({
+              master: whichadmin.name,
+              masterid: whichadmin.userid,
+              slave: "youbrain",
+              slaveid: "youbrainid",
+              actionid,
+              opid,
+              mandy: mandy(),
+              dmy: mandy(),
+              when,
+
+              masterfirstemail: whichadmin.firstemail,
+              slavefirstemail: " youstackemail",
+              slavestory,
+              story,
+              masterstory,
+              mastertype: whichadmin.type,
+              slaveype: "youbrain",
+              masterimage: whichadmin.image,
+              slaveimage: "",
+              ordstring: new Date(),
+              ifhost: whichadmin.host ? true : false,
+              actiontype: whichadmin.type + " to youbrain",
+            });
+            // lic();
+          }
+
+          res.json({ success: true, user });
+        } else {
+          res.json({ success: true, nolicense: true ,message:"user license not found"});
+        }
+
+        // const token = jwt.sign(stoken, secretKey);
+        // res.cookie('user', token);
+        // return res.json({ success: true, user, token });
+      } else {
+        console.log("password error " + user.pwrdb, pwrd, email);
+        const token = {
+          success: true,
+          ifUser: true,
+          fp: true,
+          message: "Incorrect password !",
+        };
+        return res.json(token);
+      }
+    } else {
+      const token = {
+        success: false,
+        ifUser: false,
+        message: "User not found!",
+      };
+
+      return res.json(token);
     }
   },
   Home: async (req, res) => {
@@ -2138,52 +3483,76 @@ module.exports = {
     res.json({ things });
   },
   getcourse: async (req, res) => {
-    const cid = req.params.cid
-    console.log(cid +" is cid")
-    const course = await Course.findOne({cid,deployed:true}).lean()
-    if(course){
-      const topics = await Topic.find({cid}).sort({sn:1}).lean()
-      if(topics &&topics.length >2){
-        console.log(course.name +" is course")
-        res.json({success:true,course,topics})
+    const cid = req.params.cid;
+    console.log(cid + ' is cid');
+    const course = await Course.findOne({ cid, deployed: true }).lean();
+    if (course) {
+      const topics = await Topic.find({ cid }).sort({ sn: 1 }).lean();
+      if (topics && topics.length > 2) {
+        console.log(course.name + ' is course');
+        res.json({ success: true, course, topics });
+      } else {
+        const courses = await Course.find().limit(12).sort({ ordstring: -1 });
+        res.json({ error: true, courses });
       }
-      else{
-        const courses = await Course.find().limit(12).sort({ordstring:-1})
-        res.json({error:true,courses})
-      }
-
-    }
-    else{
-      const courses = await Course.find().limit(12).sort({ordstring:-1})
-      res.json({error:true,courses})
+    } else {
+      const courses = await Course.find().limit(12).sort({ ordstring: -1 });
+      res.json({ error: true, courses });
     }
   },
   getcategory: async (req, res) => {
-    const catid = req.params.catid
-    console.log(catid +" is cid")
-    const category = await Category.findOne({catid}).lean()
-    const courses = await Course.find({catid,deployed:true}).lean()
-    if(courses && category){
-  
-      res.json({success:true,courses,category})
-
-
-    }
-    else{
-      const courses = await Course.find().limit(12).sort({ordstring:-1})
-      res.json({error:true,courses,category})
+    const catid = req.params.catid;
+    console.log(catid + ' is cid');
+    const category = await Category.findOne({ catid }).lean();
+    const courses = await Course.find({ catid, deployed: true }).lean();
+    if (courses && category) {
+      res.json({ success: true, courses, category });
+    } else {
+      const courses = await Course.find().limit(12).sort({ ordstring: -1 });
+      res.json({ error: true, courses, category });
     }
   },
+  nousersearchcourses: async (req, res) => {
+    console.table('searching courses detected at ' + currentDate());
+    let { name, page, limit } = req.query;
+    console.log(name, page, limit);
+
+    const skip = (page - 1) * limit;
+
+    const count = await Course.countDocuments({
+      deployed: true,
+      name: new RegExp(name, 'i'),
+    });
+    // const courses= await Course.find({deployed:true}).skip(skip).limit(limit).sort({students:-1})
+    const courses = await Course.find({
+      deployed: true,
+      name: new RegExp(name, 'i'),
+    })
+      .limit(12)
+      .sort({ students: -1 });
+
+    res.json({
+      success: true,
+      courses,
+      totalPages: Math.ceil(count / limit), // Calculate total pages based on count and limit
+      currentPage: Number(page),
+      sum: count,
+    });
+  },
   greet: async (req, res) => {
-    console.table('greeting detected at ' + currentDate());
-    const { isnew } = req.headers;
+    const { isnew ,userid} = req.headers;
 
-    const categories = await Category.find().sort({name:1})
-      const courses= await Course.find({deployed:true}).limit(12).sort({name:1})
-   
-      
+    const categories = await Category.find({ courses: { $gt: 0 } }).sort({
+      name: 1,
+    });
+    const user = await User.findOne({userid})
+    console.table('categories ' + userid);
 
-      res.json({ success: true ,categories,courses});
+    const courses = await Course.find({ deployed: true })
+      .limit(12)
+      .sort({ students: -1 });
+
+    res.json({ success: true, categories, courses ,user});
   },
 
   verifyreset: async (req, res) => {
@@ -2209,7 +3578,6 @@ module.exports = {
       const ifpwrd2 = pwrd === process.env.dav_pwrd;
       if (ifpwrd1 || ifpwrd2) {
         const otp = getserialnum(10000);
-        
 
         const subject = `youstack system reset reset OTP `;
 

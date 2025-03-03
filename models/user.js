@@ -188,7 +188,7 @@ const userSchema = new mongoose.Schema({
   isAfl: Boolean,
   remember: Boolean,
   inprogress: Boolean,
-  logintimes: Number,
+  logintimes: {type:Number,default:0},
   newleads: Number,
   leads: Number,
   mandyleads: Number,
@@ -258,7 +258,6 @@ const userSchema = new mongoose.Schema({
   reported: Boolean,
   reportedtimes: Number,
   rating: Number,
-  logintimes: Number,
   trained: Boolean,
   userid: String,
   regfee: Number,
@@ -289,6 +288,7 @@ const userSchema = new mongoose.Schema({
   aflname: String,
   promokey: String,
   aflid: String,
+  
   fromafl: Boolean,
   firstsub: Boolean,
   discount: Boolean,
@@ -359,6 +359,8 @@ const userSchema = new mongoose.Schema({
   sales: String,
   salesid: String,
   cdmy: String,
+  sdmy: String,
+  smandy: String,
   newref: String,
   tpay: Number,
   ccode: Number,
@@ -384,7 +386,7 @@ const userSchema = new mongoose.Schema({
   },
   myide: {
     type: String,
-    default: "welcome to codar institute integerated development environment",
+    default: "welcome to YOUSTACK integerated development environment",
   },
   restricted: {
     type: Boolean,

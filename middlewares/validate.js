@@ -115,9 +115,26 @@ const valid = (req, res, next) => {
     res.json({ error: true });
   }
 };
+const adminvalid = async (req, res, next) => {
+  const obi = req.headers.apikey;
+  const userid = req.headers.userid;
+  if (obi == process.env.obi) {
+    console.log("validated request by " + new Date().toLocaleTimeString());
+    const user = await User.findOne({userid,admin:true})
+    if(user){
+      next();
+    }
+    else{
+      res.json({ error: true });
+
+    }
+  } else {
+    res.json({ error: true });
+  }
+};
 
 
 module.exports = {
-  valid,greet
+  valid,greet,adminvalid
   
 };

@@ -85,7 +85,7 @@ mongoose
 
 
 app.use('/', mainRoutes);
-// app.use('/admin', adminRoutes);
+app.use('/admin', adminRoutes);
 
 
 

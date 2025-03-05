@@ -1,8 +1,22 @@
 const mongoose = require('mongoose');
+const freeVideoLinks = [
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+];
+const getran=()=>{
+  const ran = Math.floor((Math.random()*10 ) )
+  if( ran < freeVideoLinks.length) {return ran}  
+  getran()
 
+}
+const getlink =()=>{
+  // console.log(ran + " is random")
+  return freeVideoLinks[getran()]
+
+}
+console.log(getlink() + "  is free random video link")
 const topicSchema = new mongoose.Schema({
   allstudents: Number,
-
   name: String,
   cname: String,
 
@@ -22,6 +36,7 @@ const topicSchema = new mongoose.Schema({
   created: Date,
   createddate: String,
   lastpaid: String,
+  vlink: {type:String,default:getlink()},
   serial: Number,
   sn: Number,
 });

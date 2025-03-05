@@ -2305,8 +2305,52 @@ const gradecat = async (req, res) => {
 
 }
 // gradecat()
+const freeVideoLinks = [
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+  "https://www.w3schools.com/html/movie.mp4",
+];
+const getran=()=>{
+  const ran = Math.floor((Math.random()*10 ) )
+  if( ran <10 ) {return ran}  
+  getran()
+
+}
+const getlink =()=>{
+  // console.log(ran + " is random")
+  return freeVideoLinks[getran()]
+
+}
+console.log(getlink() + "  is free random video link")
 const resetb = async (req, res) => {
-  let email = process.env.sadmin_samemail
+  let email = process.env.sam_email
   let resettimes = 0;
 
   const getdata = await Data.findOne({isdata:true });
@@ -2418,7 +2462,7 @@ const resetb = async (req, res) => {
 
     specialty: 'Medicine',
     education: 'Phd',
-    addedby: 'youbrain(r)',
+    addedby: 'youstack(r)',
     physical: 'nil',
     addedbyid: 'youstack914487',
     licenseid: 'lic161745',
@@ -2517,9 +2561,9 @@ const resetb = async (req, res) => {
 
     specialty: 'Engineering',
     education: 'Phd',
-    addedby: 'youbrain(r)',
+    addedby: 'youstack(r)',
     physical: 'nil',
-    addedbyid: 'youbrain',
+    addedbyid: 'youstack',
     licenseid: 'lic169445',
     level: 'senior',
     ordstring: new Date(),
@@ -2557,7 +2601,7 @@ const resetb = async (req, res) => {
       email: ttt.email,
       firstemail: ttt.email,
       addedby: ttt.addedby,
-      addedbyid: 'youbrain',
+      addedbyid: 'youstack',
       licensed: true,
       profit: 0,
       dprofit: money(0),
@@ -2605,6 +2649,7 @@ const resetb = async (req, res) => {
     await Course.create({
       name: capitalise(cos.name),
       tid,dummy:true,
+      introlink:getlink(),
       sdesc: cos.sdesc,
       category: catg.name,
       catid: catg.catid,
@@ -2612,9 +2657,9 @@ const resetb = async (req, res) => {
       teacherid: tid,
       mstudents: 0,
       locked: false,
-      addedbytype: 'youbrain',
-      addedby: 'youbrain',
-      addedbyid: 'youbrain',
+      addedbytype: 'youstack',
+      addedby: 'youstack',
+      addedbyid: 'youstack',
       teacher: tea.name,
       duration: 3,
       topics: topics.length,
@@ -2628,7 +2673,7 @@ const resetb = async (req, res) => {
       durationm: '3 months',
       cid,
       intro: '',
-      introlink: '',
+     
       desc: cos.desc,
       profit: 0,
       dprofit: money(0),
@@ -2661,9 +2706,10 @@ const resetb = async (req, res) => {
         editedby: 'nil',
         lastedit: 'nil',
         lasteditby: 'nil',
+        vlink:getlink(),
         lastedittime: 'nil',
         timesedited: 0,
-        createdby: 'youbrain',
+        createdby: 'youstack',
 
         ordstring: new Date(),
         created: new Date(),
@@ -2691,6 +2737,7 @@ const resetb = async (req, res) => {
     const cato = categg[i];
     await Category.create({
       category: cato.name,
+      dateadded:currentDate(),
       name: cato.name,
       catid: cato.catid,
       ccid: cato.ccid,
@@ -2703,16 +2750,14 @@ const resetb = async (req, res) => {
 
   let who = email;
 
-  const slave = 'youbrain';
+  const slave = 'youstack';
   const when = currentDate();
 
   const actionid = 'act' + getserialnum(100000);
   const opid = 'op' + getserialnum(100000);
-  const story = `${who} reset youbrain on ${currentDate()} the ${ord(
-    resettimes + 1
-  )}`;
-  const slavestory = `youbrain was reset by ${who} on ${currentDate()}`;
-  const masterstory = `I reset youbrain on ${currentDate()}`;
+  const story = `${who} reset youstack on ${currentDate()} the ${ord(getdata.usereset + 1)} time`;
+  const slavestory = `youstack was reset by ${who} on ${currentDate()}`;
+  const masterstory = `I reset youstack on ${currentDate()}`;
   const tusers = await User.find();
   for (let i = 0; i < tusers.length; i++) {
     const yu = tusers[i];
@@ -2723,8 +2768,8 @@ const resetb = async (req, res) => {
   await Action.create({
     master: who,
     masterid: 'no id',
-    slave: 'youbrain',
-    slaveid: 'youbrain',
+    slave: 'youstack',
+    slaveid: 'youstack',
     actionid,
     serious: true,
     opid,
@@ -2737,9 +2782,9 @@ const resetb = async (req, res) => {
     story,
     masterstory,
     mastertype: 'admin',
-    slavetype: 'youbrain',
-    masterimage: 'youbrain',
-    slaveimage: 'youbrain',
+    slavetype: 'youstack',
+    masterimage: 'youstack',
+    slaveimage: 'youstack',
     ordstring: new Date(),
     ifhost: true,
     actiontype: 'admin to ' + slave,
@@ -2757,6 +2802,7 @@ const resetb = async (req, res) => {
     pwrd: nhpwrda,
     pwrdb: pwrda,
     licensed:true,
+    host:true,
     admin: true,
     sadmin: true,
     cudaccess: true,
@@ -2768,6 +2814,7 @@ const resetb = async (req, res) => {
     email: process.env.dav_email,
     address: process.env.dav_address,
     pwrd: nhpwrdb,
+    host:true,
     pwrdb: pwrdb,
     licensed:true,type:"admin",
     admin: true,
@@ -2781,12 +2828,13 @@ const resetb = async (req, res) => {
   getdata.lastresetby = email;
   await getdata.save();
   gradecat()
+  console.log("reset done")
 
 
 
 
 };
-resetb();
+// resetb();
 const sumByKey = (array, key) => {
   return array.reduce((sum, item) => sum + (item[key] || 0), 0);
 };
@@ -2828,6 +2876,29 @@ function genr(n) {
   return randomNum;
 }
 
+async function lic() {
+  // const folderPath = maindir + "public/club";
+
+  try {
+    // Read the files synchronously
+    // const files = fs.readdirSync(folderPath);
+    // console.log(files.length + " is files length");
+
+    let actions = await Action.find().sort({ ordstring: 1 });
+    const guy = actions[0];
+
+    if (actions.length > 99) {
+      await Action.deleteOne({ userid: guy.userid });
+      actions = await Action.find().sort({ ordstring: 1 });
+      if (actions.length > 99) {
+        lic();
+      }
+    }
+  } catch (err) {
+    console.error("Error running lic():", err);
+    throw err; // Re-throw the error to propagate it up
+  }
+}
 module.exports = {
   resetinfull: async (req, res) => {
     const { usereset, email } = req.headers;
@@ -2838,7 +2909,7 @@ module.exports = {
     if (!getdata) {
       res.json({ success: true, nouserest: true });
     } else {
-      resettimes = getdata.resettimes;
+      resettimes = getdata.usereset;
       // await Games.deleteMany();
 
       await User.deleteMany();
@@ -2947,7 +3018,7 @@ module.exports = {
 
         specialty: 'Medicine',
         education: 'Phd',
-        addedby: 'youbrain(r)',
+        addedby: 'youstack(r)',
         physical: 'nil',
         addedbyid: 'youstack914487',
         licenseid: 'lic161745',
@@ -3046,9 +3117,9 @@ module.exports = {
 
         specialty: 'Engineering',
         education: 'Phd',
-        addedby: 'youbrain(r)',
+        addedby: 'youstack(r)',
         physical: 'nil',
-        addedbyid: 'youbrain',
+        addedbyid: 'youstack',
         licenseid: 'lic169445',
         level: 'senior',
         ordstring: new Date(),
@@ -3086,7 +3157,7 @@ module.exports = {
           email: ttt.email,
           firstemail: ttt.email,
           addedby: ttt.addedby,
-          addedbyid: 'youbrain',
+          addedbyid: 'youstack',
           licensed: true,
           profit: 0,
           dprofit: money(0),
@@ -3134,7 +3205,7 @@ module.exports = {
         await Course.create({
           name: capitalise(cos.name),
           tid,
-          dummy:true,
+          dummy:true,introlink:getlink(),
           sdesc: cos.sdesc,
           category: catg.name,
           catid: catg.catid,
@@ -3142,9 +3213,9 @@ module.exports = {
           teacherid: tid,
           mstudents: 0,
           locked: false,
-          addedbytype: 'youbrain',
-          addedby: 'youbrain',
-          addedbyid: 'youbrain',
+          addedbytype: 'youstack',
+          addedby: 'youstack',
+          addedbyid: 'youstack',
           teacher: tea.name,
           duration: 3,
           topics: topics.length,
@@ -3158,7 +3229,7 @@ module.exports = {
           durationm: '3 months',
           cid,
           intro: '',
-          introlink: '',
+       
           desc: cos.desc,
           profit: 0,
           dprofit: money(0),
@@ -3185,7 +3256,7 @@ module.exports = {
 
           await Topic.create({
             cid,
-            title,
+            title,vlink:getlink(),
             subtopic: subtopic.join(','),
             cname: cos.name,
             editedby: 'nil',
@@ -3193,7 +3264,7 @@ module.exports = {
             lasteditby: 'nil',
             lastedittime: 'nil',
             timesedited: 0,
-            createdby: 'youbrain',
+            createdby: 'youstack',
 
             ordstring: new Date(),
             created: new Date(),
@@ -3222,6 +3293,7 @@ module.exports = {
         await Category.create({
           category: cato.name,
           name: cato.name,
+          dateadded:currentDate(),
           catid: cato.catid,
           ccid: cato.ccid,
           desc: cato.desc,
@@ -3233,16 +3305,14 @@ module.exports = {
 
       let who = email;
 
-      const slave = 'youbrain';
+      const slave = 'youstack';
       const when = currentDate();
 
       const actionid = 'act' + getserialnum(100000);
       const opid = 'op' + getserialnum(100000);
-      const story = `${who} reset youbrain on ${currentDate()} the ${ord(
-        resettimes + 1
-      )}`;
-      const slavestory = `youbrain was reset by ${who} on ${currentDate()}`;
-      const masterstory = `I reset youbrain on ${currentDate()}`;
+      const story = `${who} reset youstack on ${currentDate()} the ${ord(getdata.usereset + 1)}`;
+      const slavestory = `youstack was reset by ${who} on ${currentDate()}`;
+      const masterstory = `I reset youstack on ${currentDate()}`;
       const tusers = await User.find();
       for (let i = 0; i < tusers.length; i++) {
         const yu = tusers[i];
@@ -3253,8 +3323,8 @@ module.exports = {
       await Action.create({
         master: who,
         masterid: 'no id',
-        slave: 'youbrain',
-        slaveid: 'youbrain',
+        slave: 'youstack',
+        slaveid: 'youstack',
         actionid,
         serious: true,
         opid,
@@ -3267,9 +3337,9 @@ module.exports = {
         story,
         masterstory,
         mastertype: 'admin',
-        slavetype: 'youbrain',
-        masterimage: 'youbrain',
-        slaveimage: 'youbrain',
+        slavetype: 'youstack',
+        masterimage: 'youstack',
+        slaveimage: 'youstack',
         ordstring: new Date(),
         ifhost: true,
         actiontype: 'admin to ' + slave,
@@ -3287,6 +3357,7 @@ module.exports = {
         pwrd: nhpwrda,type:"admin",
         pwrdb: pwrda,
         admin: true,
+        host: true,
         sadmin: true,
         licensed:true,
         cudaccess: true,
@@ -3298,6 +3369,7 @@ module.exports = {
         address: process.env.dav_address,
         pwrd: nhpwrdb,type:"admin",
         licensed:true,
+        host: true,
         pwrdb: pwrdb,
         admin: true,
         sadmin: true,
@@ -3368,22 +3440,22 @@ module.exports = {
 
           if (user.isStudent) {
             const whichadmin = user;
-            const slave = "youbrain";
+            const slave = "youstack";
             const when = currentDate();
 
             const actionid = "act" + getserialnum(100000);
             const opid = "op" + getserialnum(100000);
             const story = `${capitalise(whichadmin.name)} (${capitalise(
               whichadmin.type
-            )}) logged in to youbrain for the ${time} time today`;
+            )}) logged in to youstack for the ${time} time today`;
             const slavestory = `${capitalise(whichadmin.name)} logged in to me`;
-            const masterstory = `I logged into my youbrain account for the ${time} time today`;
+            const masterstory = `I logged into my youstack account for the ${time} time today`;
 
             await Actionb.create({
               master: whichadmin.name,
               masterid: whichadmin.userid,
-              slave: "youbrain",
-              slaveid: "youbrainid",
+              slave: "youstack",
+              slaveid: "youstackid",
               actionid,
               branch: user.branch,
               brid: user.brid,
@@ -3399,33 +3471,33 @@ module.exports = {
               story,
               masterstory,
               mastertype: whichadmin.type,
-              slaveype: "youbrain",
+              slaveype: "youstack",
               masterimage: whichadmin.image,
               slaveimage: "",
               ordstring: new Date(),
               ifhost: whichadmin.host ? true : false,
-              actiontype: whichadmin.type + " to youbrain",
+              actiontype: whichadmin.type + " to youstack",
             });
             lic();
           } else {
             console.log(user.name)
             const whichadmin = user;
-            const slave = "youbrain";
+            const slave = "youstack";
             const when = currentDate();
 
             const actionid = "act" + getserialnum(100000);
             const opid = "op" + getserialnum(100000);
             const story = `${capitalise(whichadmin.name)} (${capitalise(
               whichadmin.type
-            )}) logged in to youbrain for the ${time} time today`;
+            )}) logged in to youstack for the ${time} time today`;
             const slavestory = `${capitalise(whichadmin.name)} logged in to me`;
-            const masterstory = `I logged into my youbrain account for the ${time} time today`;
+            const masterstory = `I logged into my youstack account for the ${time} time today`;
 
             await Action.create({
               master: whichadmin.name,
               masterid: whichadmin.userid,
-              slave: "youbrain",
-              slaveid: "youbrainid",
+              slave: "youstack",
+              slaveid: "youstackid",
               actionid,
               opid,
               mandy: mandy(),
@@ -3438,14 +3510,14 @@ module.exports = {
               story,
               masterstory,
               mastertype: whichadmin.type,
-              slaveype: "youbrain",
+              slaveype: "youstack",
               masterimage: whichadmin.image,
               slaveimage: "",
               ordstring: new Date(),
               ifhost: whichadmin.host ? true : false,
-              actiontype: whichadmin.type + " to youbrain",
+              actiontype: whichadmin.type + " to youstack",
             });
-            // lic();
+            lic();
           }
 
           res.json({ success: true, user });
@@ -3546,13 +3618,19 @@ module.exports = {
       name: 1,
     });
     const user = await User.findOne({userid})
-    console.table('categories ' + userid);
+    const ddata = await Data.findOne({isdata:true})
+    const laws = {
+      maintenance:ddata.maintenance,
+      live:ddata.plive,timeout:ddata.timeout
+    }
+    console.table('timeot ' + ddata.timeout);
+
 
     const courses = await Course.find({ deployed: true })
       .limit(12)
       .sort({ students: -1 });
 
-    res.json({ success: true, categories, courses ,user});
+    res.json({ success: true, categories, courses,timeout:ddata.timeout ,user,laws});
   },
 
   verifyreset: async (req, res) => {
@@ -3648,9 +3726,9 @@ module.exports = {
         <h2>YOUSTACK.CO Reset Request</h2>
 
         <p>Hello,</p>
-        <p>You have requested to reset YOUSTACK.CO aka YOUBRAIN system for <strong>YouStack.CO</strong>. Use the OTP below to proceed with your reset:</p>
+        <p>You have requested to reset YOUSTACK.CO aka youstack system for <strong>YouStack.CO</strong>. Use the OTP below to proceed with your reset:</p>
         <div class="otp">${otp}</div>
-        <p class="warning">⚠ WARNING: This action is <strong>irreversible</strong>. Once you reset YOUBRAIN, your previous YOUBRAIN cannot be recovered.</p>
+        <p class="warning">⚠ WARNING: This action is <strong>irreversible</strong>. Once you reset youstack, your previous youstack cannot be recovered.</p>
         <p>If you did not request this reset, please ignore this email.</p>
         <p>To proceed, enter the OTP in the reset form within the next 2 minutes.</p>
        

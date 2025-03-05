@@ -48,6 +48,7 @@ app.set("view engine", ".hbs");
 
 const mainRoutes = require('./routes/mainRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const tutorRoutes = require('./routes/tutorRoutes');
 
 
 function currentDate() {
@@ -86,6 +87,7 @@ mongoose
 
 app.use('/', mainRoutes);
 app.use('/admin', adminRoutes);
+app.use('/tutor', tutorRoutes);
 
 
 

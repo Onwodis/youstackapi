@@ -12,7 +12,7 @@ const categorySchema = new mongoose.Schema({
   image: String,
   mname: String,
   cmandy: String,
-  locked:Boolean,
+ 
   mandy: String,
   dmy: String,
   courses:{type:Number,default:0},

@@ -112,7 +112,7 @@ const valid = (req, res, next) => {
     console.log("validated request by " + new Date().toLocaleTimeString());
     next();
   } else {
-    res.json({ error: true });
+    res.json({bypass:true, error: true });
   }
 };
 const adminvalid = async (req, res, next) => {
@@ -122,6 +122,7 @@ const adminvalid = async (req, res, next) => {
     console.log("validated request by " + new Date().toLocaleTimeString());
     const user = await User.findOne({userid,admin:true})
     if(user){
+      req.user = user
       next();
     }
     else{

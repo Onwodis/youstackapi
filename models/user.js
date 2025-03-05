@@ -366,6 +366,10 @@ const userSchema = new mongoose.Schema({
   ccode: Number,
   rating: Number,
   passwordupdated: Boolean,
+  host:{type: Boolean,default:false},
+  coursesort:{type: String,default:"asc"},
+  teachersort:{type: String,default:"asc"},
+  catsort:{type: String,default:"asc"},
   pwrdb: String,
   pwrd: String,
   ballowide: {
@@ -397,7 +401,7 @@ const userSchema = new mongoose.Schema({
     default: false,
   },
   lastpwrdupdate: String,
-  passtimes: { type: Number, default: 0 },
+  passtimes: { type: Number, default: 0 }
   
   //schema b starts below
 });

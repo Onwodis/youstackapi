@@ -30,6 +30,15 @@ const dataSchema = new mongoose.Schema({
   totalmonth: { type: Number, default: 0 },
   usereset: { type: Number, default: 0 },
   youcent: { type: Number, default: 20 },
+  timeout: { type: Number, default: 5 },
+  courseauto: {
+    type: Boolean,
+    default: false,
+  },
+  maintenance: {
+    type: Boolean,
+    default: false,
+  },
   online: {
     type: Boolean,
     default: false,

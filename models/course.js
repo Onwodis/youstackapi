@@ -65,7 +65,7 @@ const courseSchema = new mongoose.Schema({
   lastpaid: String,
   sn:{type:Number,default:0},
   deployed: Boolean,
-  locked: Boolean,
+  locked: {type:Boolean,default:true},
   rating:{type:Number,default:3},
   reviews:{type:Number,default:500},
 });

@@ -1,9 +1,15 @@
 const User = require('../models/user');
+const { Vimeo } = require('vimeo');
 
 const Transact = require('../models/transaction');
 const Teacher = require('../models/teacher');
+const Bank = require('../models/banks');
 const Topic = require('../models/topics');
-// const Contact = require('../models/message');
+const client = new Vimeo(
+  process.env.VIMEO_CLIENT_ID,
+  process.env.VIMEO_CLIENT_SECRET,
+  process.env.VIMEO_ACCESS_TOKEN
+);
 const Data = require('../models/data');
 // const Support = require('../models/support');
 const Paystack = require('paystack-node');
@@ -246,6 +252,35 @@ function checkexpiry(grabbedDate, monthsToAdd) {
   // Format the future date in ISO 8601 format with timezone offset
   return futureDate.toISOString();
 }
+const banks = [
+  { name: "Access Bank", sortCode: "044", nuban: true },
+  { name: "Citibank Nigeria", sortCode: "023", nuban: true },
+  { name: "Ecobank Nigeria", sortCode: "050", nuban: true },
+  { name: "Fidelity Bank", sortCode: "070", nuban: true },
+  { name: "First Bank of Nigeria", sortCode: "011", nuban: true },
+  { name: "First City Monument Bank (FCMB)", sortCode: "214", nuban: true },
+  { name: "Globus Bank", sortCode: "00103", nuban: true },
+  { name: "Guaranty Trust Bank (GTBank)", sortCode: "058", nuban: true },
+  { name: "Heritage Bank", sortCode: "030", nuban: true },
+  { name: "Keystone Bank", sortCode: "082", nuban: true },
+  { name: "Moniepoint Microfinance Bank", sortCode: "50931", nuban: true },
+  { name: "Opay Digital Services", sortCode: "105", nuban: true },
+  { name: "Optimus Bank", sortCode: "00121", nuban: true },
+  { name: "PalmPay", sortCode: "999991", nuban: true },
+  { name: "Parallex Bank", sortCode: "104", nuban: true },
+  { name: "Polaris Bank", sortCode: "076", nuban: true },
+  { name: "Providus Bank", sortCode: "101", nuban: true },
+  { name: "Stanbic IBTC Bank", sortCode: "221", nuban: true },
+  { name: "Standard Chartered Bank", sortCode: "068", nuban: true },
+  { name: "Sterling Bank", sortCode: "232", nuban: true },
+  { name: "SunTrust Bank", sortCode: "100", nuban: true },
+  { name: "Titan Trust Bank", sortCode: "102", nuban: true },
+  { name: "Union Bank of Nigeria", sortCode: "032", nuban: true },
+  { name: "United Bank for Africa (UBA)", sortCode: "033", nuban: true },
+  { name: "Unity Bank", sortCode: "215", nuban: true },
+  { name: "Wema Bank", sortCode: "035", nuban: true },
+  { name: "Zenith Bank", sortCode: "057", nuban: true }
+];
 
 function getDaysBetweenDates(start, end, dayName) {
   var result = [];
@@ -2348,9 +2383,53 @@ const getlink =()=>{
   return freeVideoLinks[getran()]
 
 }
-console.log(getlink() + "  is free random video link")
+const dropyou= async()=>{
+  const ddata = await Data.findOne({isdata:true})
+
+  try {
+
+
+    console.log("Uploading video to Vimeo...");
+
+    client.upload("./public/force/you.mp4",{ name:"main video", description: "Course Introduction Video",cid:"nocid" },
+      async function (uri) {
+        const videoId = uri.split("/").pop();
+        const introlink = `https://vimeo.com/${videoId}`;
+
+        // Update course with new video details
+        ddata.videoid = videoId
+        await ddata.save();
+
+        console.log("Upload successful:", introlink);
+        // Remove temp file
+       
+
+        // res.json({ success: true, videoId, videoUrl: introlink, course });
+
+        
+      },
+      (bytesUploaded, bytesTotal) => {
+        console.log(`Upload progress: ${((bytesUploaded / bytesTotal) * 100).toFixed(2)}%`);
+      },
+      (error) => {
+        console.error("Upload failed:", error);
+        // res.status(500).json({ success: false, message: "Upload failed" });
+
+        
+      }
+    );
+  } catch (error) {
+    console.error("Server error:", error);
+    // res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+}
+
 const resetb = async (req, res) => {
+  const ddata = await Data.findOne({isdata:true})
+  // dropyou()
+
   let email = process.env.sam_email
+  
   let resettimes = 0;
 
   const getdata = await Data.findOne({isdata:true });
@@ -2361,6 +2440,7 @@ const resetb = async (req, res) => {
   await Course.deleteMany();
 
   await Teacher.deleteMany();
+  await Bank.deleteMany();
   await Category.deleteMany();
   // await Action.deleteMany();
   await Actionb.deleteMany();
@@ -2571,6 +2651,18 @@ const resetb = async (req, res) => {
     pwrdb: 'cdr332211',
   };
   const teas = [ta, tb];
+  for (let i = 0; i < banks.length; i++) {
+    let bnk = banks[i];
+
+    await Bank.create({
+      name:bnk.name,
+      sortcode:bnk.sortCode,
+      nuban:bnk.nuban,
+      bankid:"you"+getserialnum(100000),
+      ordstring:new Date(),
+      created:currentDate()
+    });
+  }
   for (let i = 0; i < teas.length; i++) {
     let ttt = teas[i];
 
@@ -2656,6 +2748,7 @@ const resetb = async (req, res) => {
       ccid: catg.ccid,
       teacherid: tid,
       mstudents: 0,
+      introid:ddata.videoid,
       locked: false,
       addedbytype: 'youstack',
       addedby: 'youstack',
@@ -2706,6 +2799,7 @@ const resetb = async (req, res) => {
         editedby: 'nil',
         lastedit: 'nil',
         lasteditby: 'nil',
+        videoid:ddata.videoid,
         vlink:getlink(),
         lastedittime: 'nil',
         timesedited: 0,
@@ -2747,7 +2841,7 @@ const resetb = async (req, res) => {
       image: process.env.api + `categories/${cato.image}`,
     });
   }
-
+  
   let who = email;
 
   const slave = 'youstack';
@@ -2899,6 +2993,16 @@ async function lic() {
     throw err; // Re-throw the error to propagate it up
   }
 }
+const forcevid = async ()=>{
+  const topics  = await Topic.find()
+  for(let i =0 ; i < topics.length ; i++){
+    const top = topics[i]
+    top.videoid = i%2 ==0 ? "1064193758" : "86775t33"
+    await top.save()
+  }
+  console.log("done forceing videoid on all topics")
+}
+// forcevid()
 module.exports = {
   resetinfull: async (req, res) => {
     const { usereset, email } = req.headers;
@@ -3392,8 +3496,9 @@ module.exports = {
     // await User.deleteMany({brid: { $exists: false}})
 
     const { email, pwrd } = req.body;
+    const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
     const ddata = await Data.findOne({ isdata: true });
-    console.log(pwrd, email, ddata.isdata);
+    console.log(pwrd, email, ddata.isdata,ip);
 
     const user = await User.findOne({ email });
     if (user) {
@@ -3423,6 +3528,7 @@ module.exports = {
           user.logindmytimes = logindmytimes;
           user.logindmy = dmy();
           user.idle = ddata.idle;
+          user.ip = ip
           user.loginord = currentDate();
           user.lastseen = currentDate();
           user.lordstring = new Date();
@@ -3496,7 +3602,7 @@ module.exports = {
             await Action.create({
               master: whichadmin.name,
               masterid: whichadmin.userid,
-              slave: "youstack",
+              slave: "youstack",ip,
               slaveid: "youstackid",
               actionid,
               opid,
@@ -3525,9 +3631,7 @@ module.exports = {
           res.json({ success: true, nolicense: true ,message:"user license not found"});
         }
 
-        // const token = jwt.sign(stoken, secretKey);
-        // res.cookie('user', token);
-        // return res.json({ success: true, user, token });
+        
       } else {
         console.log("password error " + user.pwrdb, pwrd, email);
         const token = {

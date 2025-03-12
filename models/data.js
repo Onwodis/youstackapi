@@ -17,6 +17,7 @@ const dataSchema = new mongoose.Schema({
   laststudentsignup: { type: String, default: "yet to " },
   lastteachersignup: { type: String, default: "yet to " },
   launchedparam: { type: String, default: "nil" },
+  videoid: { type: String, default: "nil" },
   newestclienttime: { type: String, default: "nil" },
   newestmarketertime: { type: String, default: "nil" },
   newestmarketer: { type: String, default: "nil" },
@@ -34,7 +35,10 @@ const dataSchema = new mongoose.Schema({
   courseauto: {
     type: Boolean,
     default: false,
+
   },
+  tveri:{type: Boolean,default:false},
+
   maintenance: {
     type: Boolean,
     default: false,

@@ -53,78 +53,71 @@ const emailb = "samuelonwodi@yahoo.com";
 const nodemb = {
   mail: async (email, subject, m1, m2) => {
     console.log(email, subject + " params from nodemb");
-    // mail: async(gh, subject, m1, m2) => {
+    
     const data = await Data.findOne({ isdata: true });
 
     const htmlb = `
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta http-equiv="X-UA-Compatible" content="IE=edge">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>selit : ${subject}</title>
-            </head>
-            <style>
-                body{
-                    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                    text-align: center;
-                    text-transform: capitalize;
-                }
-                h1{
-                    padding: 0 2%;
-                    text-transform: capitalize;
-                }
-                
-            </style>
-            <body>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta http-equiv="X-UA-Compatible" content="IE=edge">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>YOUSTACK: ${subject}</title>
+      </head>
+      <style>
+          body {
+              font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+              text-align: center;
+              text-transform: capitalize;
+          }
+          h1 {
+              padding: 0 2%;
+              text-transform: capitalize;
+          }
+      </style>
+      <body>
+          <h3>${subject}</h3>
+          <div>
+              <span>${m1}</span>
+              <span>${m2}</span>
+          </div>
+      </body>
+      </html>
+    `;
 
-                
-
-                <h3>${subject}</h3>
-
-                <div>
-                    <span>${m1}</span>
-                    <span>${m2}</span>
-                </div>
-
-
-                
-                
-            </body>
-            </html>
-
-      `;
     var mailOptions = {
       from: {
         name: "YOUSTACK.CO",
         address: process.env.smtpemail,
       },
-      to: ddata.plive ? email : emailb,
+      to: data.plive ? email : emailb,
       subject: subject,
-      // text: `Hi , verify account below`,
       html: htmlb,
       attachments: [
         {
           filename: "logob.png",
-          path: "./public/logob.PNG", // Replace with the path to your logo
-          cid: "logo", // Same as referenced in the img src
+          path: "./public/logob.PNG",
+          cid: "logo",
         },
       ],
     };
 
-    transporterb.sendMail(mailOptions, function (error, info) {
-      if (error) {
-        console.log(error);
-        console.log("still failed on nodemb");
-      } else {
-        console.log(
-          "Email sent: " + info.response + " sent through second option"
-        );
-      }
+    return new Promise((resolve, reject) => {
+      transporterb.sendMail(mailOptions, function (error, info) {
+        if (error) {
+          console.log(error);
+          console.log("Mail sending failed in nodemb");
+          resolve(false); // Resolve with false if mail fails
+        } else {
+          console.log("Email sent: " + info.response);
+          resolve(true); // Resolve with true if mail succeeds
+        }
+      });
     });
   },
 };
+
 const resett = {
   mail: async (user, token) => {
     // mail: async(gh, subject, m1, m2) => {

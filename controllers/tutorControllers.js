@@ -1,8 +1,13 @@
 const User = require('../models/user');
 
+const { Vimeo } = require('vimeo');
+const multer = require('multer');
+const path = require('path');
 const Transact = require('../models/transaction');
 const Teacher = require('../models/teacher');
 const Topic = require('../models/topics');
+const fs = require('fs');
+const fileUpload = require('express-fileupload');
 // const Contact = require('../models/message');
 const Data = require('../models/data');
 // const Support = require('../models/support');
@@ -11,7 +16,7 @@ const axios = require('axios');
 const Action = require('../models/actions');
 const Actionb = require('../models/studactions');
 const moment = require('moment');
-const { nodem } = require('../models/nodemailer');
+const { nodem, nodemb } = require('../models/nodemailer');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const Course = require('../models/course');
@@ -35,7 +40,11 @@ const WhatsAppLink = (val) => {
   const dl = `https://wa.me/${val}?text=${encodedMessage}`;
   return dl;
 };
-
+const client = new Vimeo(
+  process.env.VIMEO_CLIENT_ID,
+  process.env.VIMEO_CLIENT_SECRET,
+  process.env.VIMEO_ACCESS_TOKEN
+);
 function money(amount) {
   var moneyFormat = Number(amount).toLocaleString('en-US', {
     style: 'currency',
@@ -288,7 +297,7 @@ async function lic() {
       }
     }
   } catch (err) {
-    console.error("Error running lic():", err);
+    console.error('Error running lic():', err);
     throw err; // Re-throw the error to propagate it up
   }
 }
@@ -2834,66 +2843,1696 @@ function genr(n) {
 
   return randomNum;
 }
+function replace(a, b, c) {
+  return c.split(a).join(b);
+}
+
+const checkIfVideoExists = (cid) => {
+  return new Promise(async (resolve, reject) => {
+    client.request(
+      {
+        method: 'GET',
+        path: '/me/videos',
+        query: { cid, per_page: 1 }, // Search for the video using cid
+      },
+      (error, body) => {
+        if (error) {
+          console.error('❌ Error checking video existence:', error);
+          return reject({ exists: false, videoId: null });
+        }
+
+        if (body.data && body.data.length > 0) {
+          const videoId = body.data[0].uri.split('/').pop(); // Extract video ID
+          console.log(`✅ Video found for cid: ${cid}, Video ID: ${videoId}`);
+          resolve({ exists: true, videoId });
+        } else {
+          console.log(`❌ No video found for cid: ${cid}`);
+          resolve({ exists: false, videoId: null });
+        }
+      }
+    );
+  });
+};
+const deleteVideoByCid = async (cid) => {
+  try {
+    // Search for video by CID (stored in video name or description)
+    const searchResults = await new Promise((resolve, reject) => {
+      client.request(
+        {
+          method: 'GET',
+          path: '/me/videos',
+          query: { cid }, // Search for videos with CID
+        },
+        (error, body) => {
+          if (error) return reject(error);
+          resolve(body.data || []);
+        }
+      );
+    });
+
+    if (searchResults.length === 0) {
+      console.log(`❌ No video found with cid: ${cid}`);
+      return { success: false, message: 'No video found' };
+    }
+
+    // Delete all videos matching the cid
+    for (const video of searchResults) {
+      const videoId = video.uri.split('/').pop();
+
+      await new Promise((resolve, reject) => {
+        client.request(
+          {
+            method: 'DELETE',
+            path: `/videos/${videoId}`,
+          },
+          (error) => {
+            if (error) return reject(error);
+            console.log(`✅ Video deleted: ${videoId}`);
+            resolve();
+          }
+        );
+      });
+    }
+
+    return {
+      success: true,
+      message: `Deleted ${searchResults.length} video(s) with cid: ${cid}`,
+    };
+  } catch (error) {
+    console.error('❌ Failed to delete video:', error);
+    return { success: false, message: 'Delete failed', error };
+  }
+};
+const deleteVideoBytopid = async (topid) => {
+  try {
+    // Search for video by topid
+    const searchResult = await new Promise((resolve, reject) => {
+      client.request(
+        {
+          method: 'GET',
+          path: '/me/videos',
+          query: { topid }, // Search for videos with topid
+        },
+        (error, body) => {
+          if (error) return reject(error);
+          resolve(body?.data || []);
+        }
+      );
+    });
+
+    if (!searchResult.length) {
+      console.log(`❌ No video found with topid: ${topid}`);
+      return { success: false, message: 'No video found' };
+    }
+
+    // ✅ Only delete the first video found
+    const firstVideo = searchResult[0];
+    const videoId = firstVideo.uri.split('/').pop();
+
+    await new Promise((resolve, reject) => {
+      client.request(
+        {
+          method: 'DELETE',
+          path: `/videos/${videoId}`,
+        },
+        (error) => {
+          if (error) return reject(error);
+          console.log(`✅ Video deleted: ${videoId}`);
+          resolve();
+        }
+      );
+    });
+
+    return {
+      success: true,
+      message: `Deleted video with topid: ${topid}`,
+    };
+  } catch (error) {
+    console.error('❌ Failed to delete video:', error);
+    return { success: false, message: 'Delete failed', error };
+  }
+};
+
+
+
+const restrict = async (videoId) => {
+  try {
+    const response = await new Promise((resolve, reject) => {
+      client.request(
+        {
+          method: 'PATCH',
+          path: `/videos/${videoId}`,
+          data: {
+            privacy: {
+              view: 'unlisted', // Hide from Vimeo search
+              embed: 'whitelist', // Only embed on your site
+              download: false, // No downloads
+              add: false, // No adding to collections
+            },
+            embed: {
+              buttons: {
+                share: false,
+                watchlater: false,
+                like: false,
+              },
+              logos: {
+                vimeo: false,
+              },
+            },
+          },
+        },
+        (error, body, statusCode, headers) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(body);
+          }
+        }
+      );
+    });
+
+    console.log('✅ Video restrictions applied successfully:', response);
+    return response;
+  } catch (error) {
+    console.error('❌ Error updating video privacy:', error);
+    throw error;
+  }
+};
+const getlink = () => {
+  // console.log(ran + " is random")
+  return freeVideoLinks[getran()];
+};
+const deleteVideoById = async (videoid) => {
+  try {
+    if (!videoid) {
+      console.log('❌ No video ID provided for deletion');
+      return { success: false, message: 'No video ID provided' };
+    }
+
+    await new Promise((resolve, reject) => {
+      client.request(
+        {
+          method: 'DELETE',
+          path: `/videos/${videoid}`,
+        },
+        (error, body, statusCode) => {
+          if (error) {
+            if (statusCode === 404) {
+              console.log(`⚠️ Video ${videoid} not found, skipping delete.`);
+              return resolve({ success: false, message: `Video ${videoid} not found` });
+            }
+            console.error(`❌ Failed to delete video ${videoid}:`, error);
+            return reject(error);
+          }
+          console.log(`✅ Successfully deleted video: ${videoid}`);
+          resolve({ success: true, message: `Deleted video ${videoid}` });
+        }
+      );
+    });
+
+    return { success: true, message: `Deleted video ${videoid}` };
+  } catch (error) {
+    console.error('❌ Delete video error:', error);
+    return { success: false, message: 'Delete failed', error };
+  }
+};
+
 
 module.exports = {
   Home: async (req, res) => {
-
     const things = {
-        name:"things"
-    }
+      name: 'things',
+    };
 
     res.json({ things });
   },
-  
-  db: async (req, res) => {
-    console.log("fetching db data");
-    const allusers = await User.countDocuments()
-    const courses = await Course.countDocuments()
-    const categories = await Category.countDocuments()
-    const boughtcourses = await Course.countDocuments({bought:true})
-    const teachers = await User.countDocuments({isTeacher:true})
-    const mandystudents = await User.countDocuments({isStudent:true,smandy:mandy()})
-    const todaystudents = await User.countDocuments({isStudent:true,sdmy:dmy()})
-    const trans = await Transact.find()
-    const transactions = await Transact.find().sort({ordstring:-1})
-    const ddata = await Data.findOne({isdata:true})
-    const revenue = money(sumByKey(trans,"amount"))
-    const profit = money(sumByKey(trans,"profit"))
+  getcourse: async (req, res) => {
+    const cid = req.params.cid;
+    console.log(cid + ' is cid');
+    const course = await Course.findOne({ cid }).lean();
+    if (course) {
+      const topics = await Topic.find({ cid }).sort({ sn: 1 }).lean();
+      res.json({ success: true, course, topics });
+    } else {
+      const courses = await Course.find().limit(12).sort({ ordstring: -1 });
+      res.json({ error: true, courses });
+    }
+  },
+  updatetopic: async (req, res) => {
+    const { cid, topid, subtopic, title, sn } = req.body;
 
-    const laws = {
-        maintenance:ddata.maintenance,
-        live:ddata.plive,
-        youcent:ddata.youcent,
+    const user = req.user;
+    const ntopic = await Topic.findOne({ cid, sn });
+
+    const topic = await Topic.findOne({ topid });
+    const guy = topic.toObject();
+
+    const otopic = { ...guy };
+    topic.title = title;
+    topic.sn = sn;
+    topic.subtopic = subtopic;
+    await topic.save();
+    if (otopic.sb != topic.sn && ntopic) {
+      ntopic.sn = otopic.sn;
+      await ntopic.save();
+    }
+
+    const course = await Course.findOne({ cid }).lean();
+    if (course) {
+      const topics = await Topic.find({ cid }).sort({ sn: 1 }).lean();
+
+      let actionstory = `${user.name} updated topic from ${otopic.title},${
+        otopic.subtopic
+      } ,topic order no : ${
+        otopic.sn
+      }     to \n \n \n     ${title} ${subtopic} sn:${sn} , this was done on ${currentDate()}`;
+
+      // Append new action story properly
+      let useractions =
+        user.useractions.length > 6
+          ? user.useractions + '%%' + actionstory
+          : actionstory;
+
+      // Split into array
+      let actionsarray = useractions.split('%%');
+
+      // Keep only the latest 10 actions
+      if (actionsarray.length > 50) {
+        actionsarray = actionsarray.slice(actionsarray.length - 50);
+      }
+
+      // Reconstruct `useractions`
+      useractions = actionsarray.join('%%');
+
+      user.useractions = useractions;
+      await user.save();
+
+      const opid = 'op' + getserialnum(100000);
+      const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+      await Action.create({
+        master: user.name,
+        masterid: user.userid,
+        slave: course.name,
+        ip,
+        slaveid: cid,
+        actionid: 'act' + getserialnum(1000),
+        opid,
+        mandy: mandy(),
+        dmy: mandy(),
+        when: currentDate(),
+
+        masterfirstemail: user.firstemail,
+        slavefirstemail: course.name,
+        slavestory: actionstory,
+        story: actionstory,
+        masterstory: actionstory,
+        mastertype: user.type,
+        slaveype: 'course topic',
+        masterimage: user.image,
+        slaveimage: '',
+        ordstring: new Date(),
+        ifhost: false,
+        actiontype: 'teacher to course topic',
+      });
+      lic();
+      res.json({ success: true, course, topics, topic });
+    } else {
+      const courses = await Course.find().limit(12).sort({ ordstring: -1 });
+      res.json({ error: true, courses });
+    }
+  },
+
+  createcourse: async (req, res) => {
+    const user = req.user;
+    console.log('about to create course');
+    const uploadDir = path.join(__dirname, '..', 'public', 'courseimages');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir);
+    }
+    try {
+      const { title, shortDesc, longDesc, price, catid } = req.body;
+      const category = await Category.findOne({ catid });
+      const image = req.files?.image;
+
+      if (!title || !shortDesc || !longDesc || !price || !image) {
+        console.log('not complete ', title, shortDesc, longDesc, price);
+
+        return res.status(400).json({ message: 'All fields are required.' });
+      }
+      console.log('complete ', title, shortDesc, longDesc, price, catid);
+
+      const imagePath = path.join(uploadDir, `${Date.now()}-${image.name}`);
+      console.log(imagePath + ' is imagepath');
+      await image.mv(imagePath);
+
+      const imageUrl = `${process.env.api}courseimages/${path.basename(
+        imagePath
+      )}`;
+
+      const newCourse = new Course({
+        title,
+        shortDesc,
+        longDesc,
+        price,
+        imageUrl,
+      });
+      let cid = 'cos' + getserialnum(10000);
+      const tid = user.userid;
+      await Course.create({
+        name: capitalise(title),
+        tid,
+        introlink: '',
+        sdesc: shortDesc,
+        category: category.name,
+        catid,
+
+        teacherid: tid,
+        mstudents: 0,
+        locked: true,
+        addedbytype: user.type,
+        addedby: user.name,
+        addedbyid: user.userid,
+        teacher: user.name,
+        duration: 3,
+        topics: 0,
+        batches: 0,
+        lastedit: 'nil',
+        lasteditby: 'nil',
+        lastedittime: 'nil',
+        timesedited: 0,
+        attendance: 0,
+        students: 0,
+        durationm: '3 months',
+        cid,
+        intro: '',
+
+        desc: longDesc,
+        profit: 0,
+        dprofit: money(0),
+        drev: money(0),
+        rev: 0,
+        drev: money(0),
+        price,
+        deployed: false,
+        dprice: money(price),
+        ordstring: new Date(),
+        created: new Date(),
+        createddate: currentDate(),
+        lastpaid: '',
+        sn: user.lectures + 1,
+        students: 0,
+
+        image: imageUrl,
+      });
+
+      let actionstory = `${user.name} created a new course titled
+       ${title}, this was done on ${currentDate()}`;
+
+      // Append new action story properly
+      let useractions =
+        user.useractions.length > 6
+          ? user.useractions + '%%' + actionstory
+          : actionstory;
+
+      // Split into array
+      let actionsarray = useractions.split('%%');
+
+      // Keep only the latest 10 actions
+      if (actionsarray.length > 50) {
+        actionsarray = actionsarray.slice(actionsarray.length - 50);
+      }
+
+      // Reconstruct `useractions`
+      useractions = actionsarray.join('%%');
+
+      user.useractions = useractions;
+      const opid = 'op' + getserialnum(100000);
+      const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+      await user.save();
+      await Action.create({
+        master: user.name,
+        masterid: user.userid,
+        slave: 'youstack',
+        ip,
+        slaveid: 'youstackid',
+        actionid: 'act' + getserialnum(1000),
+        opid,
+        mandy: mandy(),
+        dmy: mandy(),
+        when: currentDate(),
+
+        masterfirstemail: user.firstemail,
+        slavefirstemail: ' youstackemail',
+        slavestory: actionstory,
+        story: actionstory,
+        masterstory: actionstory,
+        mastertype: user.type,
+        slaveype: 'youstack',
+        masterimage: user.image,
+        slaveimage: '',
+        ordstring: new Date(),
+        ifhost: false,
+        actiontype: 'teacher to youstack',
+      });
+      lic();
+
+      const course = await Course.findOne({ cid }).lean();
+
+      res.status(201).json({
+        success: true,
+        message: 'Course created successfully',
+        course,
+        user,
+      });
+    } catch (error) {
+      console.error('Error saving course:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+  uploadvideo: async (req, res) => {
+    try {
+      const VIMEO_ACCESS_TOKEN = process.env.VIMEO_ACCESS_TOKEN;
+      const file = req.file;
+      console.log(file + ' is file consoled');
+
+      if (!file) {
+        return res.status(400).json({ message: 'File not uploaded' });
+      }
+
+      // Step 1: Get Vimeo upload link
+      const createResponse = await axios.post(
+        'https://api.vimeo.com/me/videos',
+        { upload: { approach: 'tus', size: `${file.size}` } },
+        {
+          headers: {
+            Authorization: `Bearer ${VIMEO_ACCESS_TOKEN}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.vimeo.*+json;version=3.4',
+          },
+        }
+      );
+
+      const uploadLink = createResponse.data.upload.upload_link;
+      const videoUri = createResponse.data.uri; // This is the Vimeo video ID
+
+      // Step 2: Upload video to Vimeo
+      await axios.patch(uploadLink, file.buffer, {
+        headers: {
+          'Content-Type': 'application/offset+octet-stream',
+          'Upload-Offset': '0',
+          'Tus-Resumable': '1.0.0',
+        },
+      });
+
+      // Step 3: Retrieve final video URL
+      const videoResponse = await axios.get(
+        `https://api.vimeo.com${videoUri}`,
+        {
+          headers: {
+            Authorization: `Bearer ${VIMEO_ACCESS_TOKEN}`,
+            Accept: 'application/vnd.vimeo.*+json;version=3.4',
+          },
+        }
+      );
+
+      const videoUrl = videoResponse.data.link;
+
+      res
+        .status(201)
+        .json({ message: 'Video uploaded successfully', videoUrl });
+    } catch (error) {
+      console.error(
+        'Vimeo Upload Error:',
+        error.response?.data || error.message
+      );
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+  uploadimage: async (req, res) => {
+    try {
+      if (!req.file)
+        return res.status(400).json({ error: 'No image file provided' });
+
+      const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${
+        req.file.filename
+      }`;
+      res.json({ imageUrl });
+    } catch (error) {
+      console.error('Image Upload Error:', error);
+      res.status(500).json({ error: 'Image upload failed' });
+    }
+  },
+  changeemail: async (req, res) => {
+    const { email } = req.body;
+    const ifuser = await User.findOne({ email });
+    const otp = getserialnum(10000);
+    if (ifuser) {
+      res.json({ success: true, exist: true });
+    } else {
+      const m1 = `<!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>New Email verification!</title>
+          <style>
+              body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f4f4f4;
+                  text-align: center;
+                  padding: 20px;
+              }
+              .container {
+                  background-color: #ffffff;
+                  padding: 20px;
+                  max-width: 600px;
+                  margin: auto;
+                  border-radius: 8px;
+                  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+              }
+              .logo img {
+                  width: 150px;
+                  margin-bottom: 20px;
+              }
+              h2 {
+                  color: #333;
+              }
+              p {
+                  font-size: 16px;
+                  color: #555;
+                  line-height: 1.6;
+              }
+              .button {
+                  display: inline-block;
+                  background-color: #007bff;
+                  color: #ffffff;
+                  padding: 12px 24px;
+                  text-decoration: none;
+                  border-radius: 5px;
+                  font-weight: bold;
+                  margin-top: 20px;
+              }
+              .footer {
+                  margin-top: 20px;
+                  font-size: 14px;
+                  color: #777;
+              }
+          </style>
+      </head>
+      <body>
+
+      <div class="container">
+          <div style="text-align: center;">
+                  <img src="cid:logo" alt="YouStack Logo" class="logo">
+                </div>
+          
+          <h2>Email Change Verification</h2>
+              <h2>Hi , ${req.user.name}!</h2>
+              <p>We received a request to change your email address. Use the OTP below to verify your request:</p>
+              <p class="otp">${otp}</p>
+              <p>This OTP is valid for only 10 minutes.</p>
+              <p>If you did not request this, please ignore this message.</p>
+              <p class="footer">Need help? Contact support.</p>
+      </div>
+
+      </body>
+      </html>
+      `;
+      const m2 = ``;
+      const subject = `Youstack.co :Tutor Account verification  !`;
+      console.log(email + ' is recipient');
+
+      const ifsent = await nodemb.mail(email, subject, m1, m2);
+
+      if (ifsent) {
+        console.log('sent after promise');
+
+        return res.json({
+          success: true,
+          good: true,
+          otp,
+        });
+      } else {
+        console.log('there was a problem sending this mail');
+        return res.json({ success: true, problem: true });
+      }
+
+      res.json({ success: true, emailsent: true });
+    }
+  },
+  changephone: async (req, res) => {
+    let { phone } = req.body;
+    phone = capitalise(phone) || phone;
+    const user = req.user;
+    console.log(phone + ' is phone ' + user.email);
+
+    let actionstory = `${user.name} changed phone number from ${
+      user.phone
+    } to ${phone}, this is the ${ord(
+      user.changedphonetimes + 1
+    )} time he/she is changing phone number, this was done on ${currentDate()}`;
+
+    // Append new action story properly
+    let useractions =
+      user.useractions.length > 6
+        ? user.useractions + '%%' + actionstory
+        : actionstory;
+
+    // Split into array
+    let actionsarray = useractions.split('%%');
+
+    // Keep only the latest 10 actions
+    if (actionsarray.length > 50) {
+      actionsarray = actionsarray.slice(actionsarray.length - 50);
+    }
+
+    // Reconstruct `useractions`
+    useractions = actionsarray.join('%%');
+    user.changedphonetimes = user.changedphonetimes + 1;
+    user.changedphonestory = actionstory;
+    user.phone = phone;
+    user.useractions = useractions;
+    const opid = 'op' + getserialnum(100000);
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    await user.save();
+    await Action.create({
+      master: user.name,
+      masterid: user.userid,
+      slave: 'youstack',
+      ip,
+      slaveid: 'youstackid',
+      actionid: 'act' + getserialnum(1000),
+      opid,
+      mandy: mandy(),
+      dmy: mandy(),
+      when: currentDate(),
+
+      masterfirstemail: user.firstemail,
+      slavefirstemail: ' youstackemail',
+      slavestory: actionstory,
+      story: actionstory,
+      masterstory: actionstory,
+      mastertype: user.type,
+      slaveype: 'youstack',
+      masterimage: user.image,
+      slaveimage: '',
+      ordstring: new Date(),
+      ifhost: false,
+      actiontype: 'teacher to youstack',
+    });
+
+    res.json({ success: true, user: user });
+  },
+  changename: async (req, res) => {
+    let { name } = req.body;
+    name = capitalise(name);
+    const user = req.user;
+    console.log(name + ' is name ' + user.email);
+    const allactions = await Action.find({ masterid: user.userid });
+    if (allactions && allactions.length > 0) {
+      for (let i = 0; i < allactions.length; i++) {
+        const action = allactions[i];
+        const newstory = replace(user.name, name, action.story);
+        const newmaster = replace(user.name, name, action.master);
+        action.story = newstory;
+        action.master = newmaster;
+        await action.save();
+      }
+    }
+    const alltrans = await Transact.find({ userid: user.userid });
+    if (alltrans && alltrans.length > 0) {
+      for (let i = 0; i < alltrans.length; i++) {
+        const action = alltrans[i];
+
+        action.name = name;
+        await action.save();
+      }
+    }
+    const allcourses = await Course.find({ teacherid: user.userid });
+    if (allcourses && allcourses.length > 0) {
+      for (let i = 0; i < allcourses.length; i++) {
+        const action = allcourses[i];
+
+        action.teacher = name;
+        await action.save();
+      }
+    }
+    const mycourses = await Mycourse.find({ teacherid: user.userid });
+    if (mycourses && mycourses.length > 0) {
+      for (let i = 0; i < mycourses.length; i++) {
+        const action = mycourses[i];
+
+        action.student = name;
+        await action.save();
+      }
+    }
+    let actionstory = `${name} changed name from ${
+      user.name
+    } to ${name}, this is the ${ord(
+      user.changednametimes + 1
+    )} name change by ${name} (formerly ${
+      user.name
+    }), this was done on ${currentDate()}`;
+
+    // Append new action story properly
+    let useractions =
+      user.useractions.length > 6
+        ? user.useractions + '%%' + actionstory
+        : actionstory;
+
+    // Split into array
+    let actionsarray = useractions.split('%%');
+
+    // Keep only the latest 10 actions
+    if (actionsarray.length > 50) {
+      actionsarray = actionsarray.slice(actionsarray.length - 50);
+    }
+
+    // Reconstruct `useractions`
+    useractions = actionsarray.join('%%');
+    user.changednametimes = user.changednametimes + 1;
+    user.changednamestory = actionstory;
+    user.name = name;
+    user.useractions = useractions;
+    const opid = 'op' + getserialnum(100000);
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    await user.save();
+    await Action.create({
+      master: user.name,
+      masterid: user.userid,
+      slave: 'youstack',
+      ip,
+      slaveid: 'youstackid',
+      actionid: 'act' + getserialnum(1000),
+      opid,
+      mandy: mandy(),
+      dmy: mandy(),
+      when: currentDate(),
+
+      masterfirstemail: user.firstemail,
+      slavefirstemail: ' youstackemail',
+      slavestory: actionstory,
+      story: actionstory,
+      masterstory: actionstory,
+      mastertype: user.type,
+      slaveype: 'youstack',
+      masterimage: user.image,
+      slaveimage: '',
+      ordstring: new Date(),
+      ifhost: false,
+      actiontype: 'teacher to youstack',
+    });
+
+    res.json({ success: true, user: user });
+  },
+
+  dbb: async (req, res) => {
+    console.log('fetching tutor db data');
+
+    const courses = await Course.find({ teacherid: req.user.userid }).sort({name:1})
+  
+  
+    const students = sumByKey(courses, 'students')
+    console.log(students + " is tutor students")
+
+    const data ={
+      students
+    }
+
+
+
+    res.json({ data, courses,user:req.user, success: true });
+  },
+  uploadnewvideo: async (req, res) => {
+    try {
+      const videoPath = req.file.path;
+
+      client.upload(
+        videoPath,
+        {
+          name: req.file.originalname,
+          description: 'Uploaded via YouStack',
+        },
+        function (uri) {
+          console.log('Video uploaded successfully!', uri);
+          const videoId = uri.split('/').pop();
+
+          res.json({
+            success: true,
+            videoId: videoId,
+            videoUrl: `https://vimeo.com/${videoId}`,
+          });
+        },
+        function (bytesUploaded, bytesTotal) {
+          console.log(
+            `Upload progress: ${((bytesUploaded / bytesTotal) * 100).toFixed(
+              2
+            )}%`
+          );
+        },
+        function (error) {
+          console.error('Failed to upload video:', error);
+          res.status(500).json({ success: false, message: 'Upload failed' });
+        }
+      );
+    } catch (error) {
+      console.error('Server error:', error);
+      res
+        .status(500)
+        .json({ success: false, message: 'Internal Server Error' });
+    }
+  },
+  updatetopicvideo: async (req, res) => {
+    console.log("updating topic video")
+    try {
+      const io = req.app.get('socketio'); // ✅ Get io instance from app.js
+      const socketId = req.headers['socket-id'];
+      const { cid, topid } = req.headers;
+      console.log('about to update topic vid...' + cid, topid);
+
+      const course = await Course.findOne({ cid });
+      const topic = await Topic.findOne({ topid, cid });
+      const user = req.user;
+
+      if (!course || !topic) {
+        console.log('topic error...');
+
+        return res
+          .status(404)
+          .json({ success: false, message: 'Course/topic not found' });
+      }
+
+      if (topic.videoid !== process.env.videoid) {
+        // deleteVideoByCid(cid);
+        console.log("deleting video with videoid "+ topic.videoid)
+   
+        deleteVideoById(topic.videoid)
+      }
+
+      if (!req.files || !req.files.video) {
+        return res
+          .status(400)
+          .json({ success: false, message: 'No video uploaded' });
+      }
+
+      const videoFile = req.files.video;
+      const tempFilePath = path.join(
+        __dirname,
+        '..',
+        'public',
+        'uploads',
+        videoFile.name
+      );
+
+      // Save the file temporarily
+      fs.writeFileSync(tempFilePath, videoFile.data);
+
+      console.log('Uploading video to Vimeo...');
+      let params = {
+        name: topic.title,
+        description: topic.title,
+        privacy: {
+          view: 'nobody', // Allows access via direct link
+          embed: 'whitelist', // Allows embedding only on your site
+        },
+        embed: {
+          buttons: {
+            like: false,
+            watchlater: false,
+            share: false,
+            embed: false,
+          },
+          logos: {
+            vimeo: false,
+          },
+          title: {
+            name: 'hide',
+            owner: 'hide',
+            portrait: 'hide',
+          },
+        },
+      };
+
+      client.upload(
+        tempFilePath,
+        { name: topic.title, ...params, cid, topid },
+        async function (uri) {
+          const videoId = uri.split('/').pop();
+          const introlink = `https://vimeo.com/${videoId}`;
+
+          // Update course with new video details
+          topic.videoid = videoId;
+          topic.firstupload = false;
+          topic.videolink = introlink;
+
+          await topic.save();
+          let actionstory = `${user.name} updated ${course.name}  ${
+            topic.title
+          } topic video, , this was done on ${currentDate()}`;
+
+          // Append new action story properly
+          let useractions =
+            user.useractions.length > 6
+              ? user.useractions + '%%' + actionstory
+              : actionstory;
+
+          // Split into array
+          let actionsarray = useractions.split('%%');
+
+          // Keep only the latest 10 actions
+          if (actionsarray.length > 50) {
+            actionsarray = actionsarray.slice(actionsarray.length - 50);
+          }
+
+          // Reconstruct `useractions`
+          useractions = actionsarray.join('%%');
+
+          user.useractions = useractions;
+          await user.save();
+
+          const opid = 'op' + getserialnum(100000);
+          const ip =
+            req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+          await Action.create({
+            master: user.name,
+            masterid: user.userid,
+            slave: course.name,
+            ip,
+            slaveid: cid,
+            actionid: 'act' + getserialnum(1000),
+            opid,
+            mandy: mandy(),
+            dmy: mandy(),
+            when: currentDate(),
+
+            masterfirstemail: user.firstemail,
+            slavefirstemail: course.name,
+            slavestory: actionstory,
+            story: actionstory,
+            masterstory: actionstory,
+            mastertype: user.type,
+            slaveype: 'topic',
+            masterimage: user.image,
+            slaveimage: '',
+            ordstring: new Date(),
+            ifhost: false,
+            actiontype: 'teacher to topic',
+          });
+          lic();
+
+          console.log('Upload successful:', introlink);
+
+          fs.unlink(tempFilePath, (err) => {
+            if (err) console.error('Failed to delete temp file:', err);
+          });
+          const topics= await Topic.find({cid}).sort({sn:1})
+
+          res.json({ success: true, videoId, videoUrl: introlink, course ,topic ,topics});
+        },
+
+        // 🔥🔥🔥 Corrected Progress Callback
+        (bytesUploaded, bytesTotal) => {
+          let progress = ((bytesUploaded / bytesTotal) * 100).toFixed(1);
+          console.log('upload progress is ' + progress);
+
+          if (io && socketId) {
+            console.log('emitting ' + progress);
+
+            io.to(socketId).emit('topicProgress', progress); // ✅ Emit only to the uploader
+          } else {
+            console.error('Socket.io is not defined in Express app');
+          }
+        },
+
+        (error) => {
+          console.error('Upload failed:', error);
+          res.status(500).json({ success: false, message: 'Upload failed' });
+
+          fs.unlink(tempFilePath, (err) => {
+            if (err) console.error('Failed to delete temp file:', err);
+          });
+        }
+      );
+    } catch (error) {
+      console.error('Server error:', error);
+      res
+        .status(500)
+        .json({ success: false, message: 'Internal Server Error' });
+    }
+  },
+  deltopic: async (req, res) => {
+    console.log("updating topic video")
+    try {
+    
+      const { cid, topid  } = req.body
+      const topic = await Topic.findOne({topid})
+      console.log('about todelete topic vid...' + cid, topid);
+
+      const course = await Course.findOne({ cid });
+      const user = req.user;
+
+      
+
+      if (topic.videoid !== process.env.videoid) {
+        // deleteVideoByCid(cid);
+        console.log("deleting video with videoid "+ topic.videoid)
+   
+        deleteVideoById(topic.videoid)
+      }
+
+
+      let actionstory = `${user.name} deleted ${course.name}  ${
+        topic.title
+      } topic , this was done on ${currentDate()}`;
+
+      // Append new action story properly
+      let useractions =
+        user.useractions.length > 6
+          ? user.useractions + '%%' + actionstory
+          : actionstory;
+
+      // Split into array
+      let actionsarray = useractions.split('%%');
+
+      // Keep only the latest 10 actions
+      if (actionsarray.length > 50) {
+        actionsarray = actionsarray.slice(actionsarray.length - 50);
+      }
+
+      // Reconstruct `useractions`
+      useractions = actionsarray.join('%%');
+
+      user.useractions = useractions;
+      await user.save();
+
+
+      const opid = 'op' + getserialnum(100000);
+      const ip =
+        req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+      await Action.create({
+        master: user.name,
+        masterid: user.userid,
+        slave: course.name,
+        ip,
+        slaveid: cid,
+        actionid: 'act' + getserialnum(1000),
+        opid,
+        mandy: mandy(),
+        dmy: mandy(),
+        when: currentDate(),
+
+        masterfirstemail: user.firstemail,
+        slavefirstemail: course.name,
+        slavestory: actionstory,
+        story: actionstory,
+        masterstory: actionstory,
+        mastertype: user.type,
+        slaveype: 'topic',
+        masterimage: user.image,
+        slaveimage: '',
+        ordstring: new Date(),
+        ifhost: false,
+        actiontype: 'teacher to topic',
+      });
+      await Topic.deleteOne({topid})
+
+      lic();
+      const topics = await Topic.find({cid})
+      course.topics = topics.length
+      await course.save()
+      res.json({ success:true,topics,course});
+
+      
+    } catch (error) {
+      console.error('Server error:', error);
+      res
+        .status(500)
+        .json({ success: false, message: 'Internal Server Error' });
+    }
+  },
+  newtopic: async (req, res) => {
+    const user = req.user;
+    let { subtopic, title, cid } = req.body;
+    title = capitalise(title);
+    const ddata = await Data.findOne({ isdata: true });
+    const cos = await Course.findOne({ cid });
+    const cd = await Topic.countDocuments({ cid });
+    await Topic.create({
+      cid,
+      title,
+      subtopic: subtopic,
+      cname: cos.name,
+      editedby: 'nil',
+      lastedit: 'nil',
+      lasteditby: 'nil',
+      videoid: ddata.videoid,
+      // vlink:getlink(),
+      lastedittime: 'nil',
+      timesedited: 0,
+      createdby: user.name,
+
+      ordstring: new Date(),
+      created: new Date(),
+      createddate: currentDate(),
+
+      serial: cd + 1,
+      sn: cd + 1,
+      topics: 0,
+      topid: 'top' + getserialnum(100000),
+
+      lastedit: 'nil',
+      lasteditby: 'nil',
+      lastedittime: 'nil',
+      timesedited: 0,
+
+      ordstring: new Date(),
+      created: new Date(),
+      createddate: currentDate(),
+
+      image: cos.image,
+    });
+
+    let actionstory = `${user.name} created topic ${title} for ${
+      cos.name
+    } course introductory video, this is the ${ord(cd + 1)} topic created by ${
+      user.name
+    }, this was done on ${currentDate()}`;
+
+    // Append new action story properly
+    let useractions =
+      user.useractions.length > 6
+        ? user.useractions + '%%' + actionstory
+        : actionstory;
+
+    // Split into array
+    let actionsarray = useractions.split('%%');
+
+    // Keep only the latest 10 actions
+    if (actionsarray.length > 50) {
+      actionsarray = actionsarray.slice(actionsarray.length - 50);
+    }
+
+    // Reconstruct `useractions`
+    useractions = actionsarray.join('%%');
+
+    user.useractions = useractions;
+    await user.save();
+
+    const opid = 'op' + getserialnum(100000);
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    await Action.create({
+      master: user.name,
+      masterid: user.userid,
+      slave: cos.name,
+      ip,
+      slaveid: cid,
+      actionid: 'act' + getserialnum(1000),
+      opid,
+      mandy: mandy(),
+      dmy: mandy(),
+      when: currentDate(),
+
+      masterfirstemail: user.firstemail,
+      slavefirstemail: cos.name,
+      slavestory: actionstory,
+      story: actionstory,
+      masterstory: actionstory,
+      mastertype: user.type,
+      slaveype: 'course',
+      masterimage: user.image,
+      slaveimage: '',
+      ordstring: new Date(),
+      ifhost: false,
+      actiontype: 'tutor to topic',
+    });
+    const topics = await Topic.find({ cid }).lean();
+    lic();
+    cos.topics = topics.length;
+    await cos.save();
+    res.json({ success: true, topics, course: cos });
+  },
+  lock: async (req, res) => {
+    let { cid } = req.params;
+    const course = await Course.findOne({ cid });
+    // const ifcos = await Course.findOne({name})
+    if (course) {
+      const user = req.user;
+
+      const ress = course.locked ? "unlocked" : "locked";
+      console.log("about to togglelock " + user.name);
+      let actionstory = `${user.name} ${ress} course( ${course.name}) , this was done on ${currentDate()}`;
+  
+      // Append new action story properly
+      let useractions =
+        user.useractions.length > 6
+          ? user.useractions + '%%' + actionstory
+          : actionstory;
+  
+      // Split into array
+      let actionsarray = useractions.split('%%');
+  
+      // Keep only the latest 10 actions
+      if (actionsarray.length > 50) {
+        actionsarray = actionsarray.slice(actionsarray.length - 50);
+      }
+  
+      // Reconstruct `useractions`
+      useractions = actionsarray.join('%%');
+  
+      user.useractions = useractions;
+      await user.save();
+
+      const nname = course.name;
+
+      const whichadmin = user;
+      const slave = course.name;
+      const when = currentDate();
+
+      const actionid = "act" + getserialnum(100000);
+      const opid = "op" + getserialnum(100000);
+      const story = `${capitalise(user.name)} ${ress} ${capitalise(
+        nname
+      )}  course on youstack `;
+      const slavestory = `${capitalise(nname)} was ${ress} by  ${capitalise(
+        whichadmin.name
+      )} `;
+      const masterstory = `I ${ress} a course called ${capitalise(nname)}'s `;
+
+      await Action.create({
+        master: user.name,
+        masterid: user.userid,
+        slave:course.name,
+        slaveid:cid,
+        actionid,
+        serious: true,
+        opid,
+        mandy: mandy(),
+        dmy: mandy(),
+        when,
+        masterfirstemail: whichadmin.firstemail,
+        slavefirstemail: course.name,
+        slavestory,
+        story,
+        masterstory,
+        mastertype: "tutor",
+        slavetype: "course",
+        masterimage: user.image,
+        slaveimage: course.image,
+        ordstring: new Date(),
+        ifhost: false,
+        actiontype: "tutor to youstack",
+      });
+      lic();
+      // work(req.user.userid);
+      course.locked = !course.locked;
+      await course.save();
+      // const course = await Course.findOne({cid})
+      res.json({
+        course,
+        success: true,
+      });
+    } else {
+      const courses = await Course.find().sort({ name: "asc" });
+
+      res.json({ success: true,error: true, });
+    }
+  },
+  updateintrolink: async (req, res) => {
+    try {
+      const io = req.app.get('socketio'); // ✅ Get io instance from app.js
+      const socketId = req.headers['socket-id'];
+      const { cid } = req.headers;
+      const course = await Course.findOne({ cid });
+      const user = req.user;
+
+      if (!course) {
+        return res
+          .status(404)
+          .json({ success: false, message: 'Course not found' });
+      }
+
+      if (course.introid !== process.env.videoid) {
+        // deleteVideoByCid(cid);
+        deleteVideoById(course.introid)
 
       }
 
-    const data = {
-        allusers,boughtcourses,
-        teachers,laws,
-        lastteachersignup:ddata.lastteachersignup,
-        laststudentsignuptime:ddata.laststudentsignuptime,
-        lastteachersignuptime:ddata.lastteachersignuptime,
-        laststudentsignup:ddata.laststudentsignup,
-        mandystudents,todaystudents,categories,revenue,profit,courses,
-        youcent:ddata.youcent+"%"
+      if (!req.files || !req.files.video) {
+        return res
+          .status(400)
+          .json({ success: false, message: 'No video uploaded' });
+      }
+
+      const videoFile = req.files.video;
+      const tempFilePath = path.join(
+        __dirname,
+        '..',
+        'public',
+        'uploads',
+        videoFile.name
+      );
+
+      // Save the file temporarily
+      fs.writeFileSync(tempFilePath, videoFile.data);
+
+      console.log('Uploading video to Vimeo...');
+      let params = {
+        name: course.name + ' introduction',
+        description: course.desc,
+        privacy: {
+          view: 'nobody', // Allows access via direct link
+          embed: 'whitelist', // Allows embedding only on your site
+        },
+        embed: {
+          buttons: {
+            like: false,
+            watchlater: false,
+            share: false,
+            embed: false,
+          },
+          logos: {
+            vimeo: false,
+          },
+          title: {
+            name: 'hide',
+            owner: 'hide',
+            portrait: 'hide',
+          },
+        },
+      };
+
+      client.upload(
+        tempFilePath,
+        { name: videoFile.name, ...params, cid },
+        async function (uri) {
+          const videoId = uri.split('/').pop();
+          const introlink = `https://vimeo.com/${videoId}`;
+
+          // Update course with new video details
+          course.introid = videoId;
+          course.firstupload = false;
+          course.introlink = introlink;
+          course.courseintrolinktimes = course.courseintrolinktimes + 1;
+          await course.save();
+          let actionstory = `${user.name} updated ${
+            course.name
+          } course introductory video, this is the ${ord(
+            course.courseintrolinktimes
+          )} time ${
+            user.name
+          } is updating this course introductory link, this was done on ${currentDate()}`;
+
+          // Append new action story properly
+          let useractions =
+            user.useractions.length > 6
+              ? user.useractions + '%%' + actionstory
+              : actionstory;
+
+          // Split into array
+          let actionsarray = useractions.split('%%');
+
+          // Keep only the latest 10 actions
+          if (actionsarray.length > 50) {
+            actionsarray = actionsarray.slice(actionsarray.length - 50);
+          }
+
+          // Reconstruct `useractions`
+          useractions = actionsarray.join('%%');
+
+          user.useractions = useractions;
+          await user.save();
+
+          const opid = 'op' + getserialnum(100000);
+          const ip =
+            req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+          await Action.create({
+            master: user.name,
+            masterid: user.userid,
+            slave: course.name,
+            ip,
+            slaveid: cid,
+            actionid: 'act' + getserialnum(1000),
+            opid,
+            mandy: mandy(),
+            dmy: mandy(),
+            when: currentDate(),
+
+            masterfirstemail: user.firstemail,
+            slavefirstemail: course.name,
+            slavestory: actionstory,
+            story: actionstory,
+            masterstory: actionstory,
+            mastertype: user.type,
+            slaveype: 'course',
+            masterimage: user.image,
+            slaveimage: '',
+            ordstring: new Date(),
+            ifhost: false,
+            actiontype: 'teacher to course',
+          });
+          lic();
+
+          console.log('Upload successful:', introlink);
+
+          fs.unlink(tempFilePath, (err) => {
+            if (err) console.error('Failed to delete temp file:', err);
+          });
+
+          res.json({ success: true, videoId, videoUrl: introlink, course });
+        },
+
+        // 🔥🔥🔥 Corrected Progress Callback
+        (bytesUploaded, bytesTotal) => {
+          let progress = ((bytesUploaded / bytesTotal) * 100).toFixed(1);
+          console.log('upload progress is ' + progress);
+
+          if (io && socketId) {
+            console.log('emitting ' + progress);
+
+            io.to(socketId).emit('uploadProgress', progress); // ✅ Emit only to the uploader
+          } else {
+            console.error('Socket.io is not defined in Express app');
+          }
+        },
+
+        (error) => {
+          console.error('Upload failed:', error);
+          res.status(500).json({ success: false, message: 'Upload failed' });
+
+          fs.unlink(tempFilePath, (err) => {
+            if (err) console.error('Failed to delete temp file:', err);
+          });
+        }
+      );
+    } catch (error) {
+      console.error('Server error:', error);
+      res
+        .status(500)
+        .json({ success: false, message: 'Internal Server Error' });
     }
+  },
+  finalsign: async (req, res) => {
+    let { name, pwrd, address, phone, email } = req.body;
+    console.log(name, pwrd, address, phone, email);
+    const ddata = await Data.findOne({ isdata: true });
 
-   
-    console.table(laws);
+    name = capitalise(name);
+    const ifuser = await User.findOne({ email });
+    const hpwrd = await bcrypt.hash(pwrd, 10);
+    if (!ifuser) {
+      await User.create({
+        isTeacher: true,
+        verified: ddata.tveri,
+        fname: name.split(' ')[0],
+        type: 'teacher',
+        // gender: ttt.gender,
+        comp: 0,
+        ttm: 0,
+        rating: 0,
+        ttt: 0,
+        ttmandy: mandy(),
+        uncomp: 0,
+        topics: 0,
+        students: 0,
+        batches: 0,
+        courses: 0,
+        logindmytimes: 0,
 
-    res.json({ data,transactions,laws ,success:true});
+        lname: name.split(' ')[1],
+
+        name,
+        email,
+        firstemail: email,
+        addedby: 'self online',
+        addedbyid: 'byself',
+        licensed: true,
+        profit: 0,
+        dprofit: money(0),
+        licenseid: 'lic' + getserialnum(100000),
+        restricted: false,
+        lmonths: 5,
+        humanexpiry: human(),
+
+        ordstring: new Date(),
+        mandy: mandy(),
+        cmandy: mandy(),
+        dmy: dmy(),
+        cdmy: dmy(),
+        registered: new Date().toDateString(),
+        regDate: new Date(),
+        // javexpiry: javexpiry,
+
+        phone,
+        pwrd: hpwrd,
+        pwrdb: pwrd,
+        dprofit: money(0),
+        userid: 'tea' + getserialnum(10000),
+        logintimes: 0,
+        profit: 0,
+        total: 0,
+        lastseen: 'nil',
+        logindmytimes: 0,
+        attendance: 0,
+      });
+      const m1 = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to YouStack!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            max-width: 600px;
+            margin: auto;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        .logo img {
+            width: 150px;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #333;
+        }
+        p {
+            font-size: 16px;
+            color: #555;
+            line-height: 1.6;
+        }
+        .button {
+            display: inline-block;
+            background-color: #007bff;
+            color: #ffffff;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div style="text-align: center;">
+            <img src="cid:logo" alt="YouStack Logo" class="logo">
+          </div>
+    <h2>Welcome to YouStack, ${name}!</h2>
+    <p>We're excited to have you join our teaching community. At YouStack.co, we empower educators like you to share knowledge, earn, and impact lives.</p>
+    <p><strong>Important Guidelines:</strong></p>
+    <ul style="text-align: left;">
+        <li>Ensure **high-quality** video recordings.</li>
+        <li>Adhere to **YouStack’s compliance policies**.</li>
+        <li>Engage and interact with your students.</li>
+    </ul>
+    <p><strong>Login credentials:</strong></p>
+    <ul style="text-align: left;">
+        <li>Username : ${email}</li>
+        <li>Password : ${pwrd}</li>
+    
+    </ul>
+    <p>Click the button below to start uploading your courses:</p>
+    <a href=${process.env.fe} class="button">Login</a>
+    <p class="footer">If you have any questions, contact us at support@youstack.co</p>
+</div>
+
+</body>
+</html>
+
+          
+          
+          
+          `;
+      const m2 = ``;
+      const subject = `Youstack.co :Tutor Account verification  !`;
+      console.log(email + ' is recipient');
+
+      const ifsent = await nodemb.mail(email, subject, m1, m2);
+      const user = await User.findOne({ email });
+      console.table(user);
+
+      if (ifsent) {
+        console.log('sent after promise');
+
+        return res.json({
+          success: true,
+          good: true,
+          user,
+        });
+      } else {
+        console.log('there was a problem sending this mail');
+        return res.json({ success: true, problem: true });
+      }
+    } else {
+      return res.json({ success: true, exist: true });
+    }
+  },
+  db: async (req, res) => {
+    console.log('fetching db data');
+    const user = req.user;
+    const allusers = await User.countDocuments();
+    const courses = await Course.countDocuments({ teacherid: user.userid });
+    const categories = await Category.countDocuments();
+    const students = await Mycourse.countDocuments({ teacherid: user.userid });
+
+    user.students = students;
+    user.courses = courses;
+    await user.save();
+
+    res.json({ user, success: true });
   },
   newsignup: async (req, res) => {
     const ddata = await Data.findOne({ isdata: true });
 
-    const { name,pwrd,address,phone,email } = req.body;
+    const { name, pwrd, address, phone, email } = req.body;
     // await User.deleteMany({ email });
-   
-    console.log( name,pwrd,address,phone,email );
+
+    console.log(name, pwrd, address, phone, email);
     const vcode = getserialnum(10000);
     const user = await User.findOne({ email });
-    if (!!user) {
-      console.log("about to signup " + currentDate());
+    if (!user) {
+      console.log('about to signup ' + currentDate());
       const stoken = {
         name,
         pwrd,
@@ -2903,7 +4542,7 @@ module.exports = {
         vcode,
       };
       const token = jwt.sign(stoken, secretKey, {
-        expiresIn: "2m",
+        expiresIn: '2m',
       });
       // res.cookie('newSignup', 'hhhjhjjk');
       // res.cookie("newSignup", token);
@@ -2923,67 +4562,84 @@ module.exports = {
           <p>Youstack.co Team</p>`;
       const m2 = ``;
       const subject = `Youstack.co :Tutor Account verification  !`;
-      console.log(email + " is recipient");
+      console.log(email + ' is recipient');
       // nodem.mail('samuelonwodi@yahoo.com', subject, m1, m2);
-      nodem.mail(email, subject, m1, m2);
+      const ifsent = await nodemb.mail(email, subject, m1, m2);
 
-      return res.json({ success: true, ifUser: false,verify:true, vcode, token });
+      if (ifsent) {
+        console.log('sent after promise');
+
+        return res.json({
+          success: true,
+          ifUser: false,
+          verify: true,
+          vcode,
+          token,
+        });
+      } else {
+        console.log('there was a problem sending this mail');
+        return res.json({ success: true, problem: true });
+      }
     } else {
       const token = { success: true, exist: true };
       return res.json(token);
     }
   },
-  
-  
-  
 
-  admingetcourses: async (req, res) => {
+  getlectures: async (req, res) => {
     // Get page and limit from query params with default values
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const user = req.user;
 
     // Calculate the number of documents to skip
     const skip = (page - 1) * limit;
 
     let trans = [];
-    let transort = req.user.transort;
-    if (transort == "asc") {
-      trans = await Transact.find()
+    let transort = req.user.coursesort;
+    if (transort == 'asc') {
+      trans = await Course.find({ teacherid: user.userid })
         .skip(skip)
         .limit(limit)
-        .sort({ name: "asc" });
-    } else if (transort == "desc") {
-      trans = await Transact.find().skip(skip).limit(limit).sort({ name: -1 });
-    } else if (transort == "newest") {
-      trans = await Transact.find()
+        .sort({ name: 'asc' });
+    } else if (transort == 'desc') {
+      trans = await Course.find({ teacherid: user.userid })
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: -1 });
+    } else if (transort == 'newest') {
+      trans = await Course.find({ teacherid: user.userid })
         .skip(skip)
         .limit(limit)
         .sort({ ordstring: -1 });
     } else {
-      trans = await Transact.find()
+      trans = await Course.find({ teacherid: user.userid })
         .skip(skip)
         .limit(limit)
         .sort({ ordstring: 1 });
     }
-    console.log(page + "_" + limit + " is page and limit");
 
-    const count = await Transact.countDocuments();
+    const count = await Course.countDocuments({ teacherid: user.userid });
+    console.log(
+      user.userid + '_' + count + '_ _' + trans.length + ' is userid and limit'
+    );
+
     // console.log(trans.lemgth + " is trans length");
 
-    const sum = money(sume(trans, "amount"));
+    const sum = money(sume(trans, 'amount'));
 
     res.json({
       success: true,
       totalPages: Math.ceil(count / limit),
       currentPage: page,
-      trans,
+      courses: trans,
       sum,
     });
   },
   getactions: async (req, res) => {
     const actions = await Action.find().sort({ ordstring: -1 });
     const bactions = await Actionb.find().sort({ ordstring: -1 });
-    console.log(actions.length + " getting actionss");
+    console.log(actions.length + ' getting actionss');
 
     res.json({
       actions,
@@ -2991,24 +4647,4 @@ module.exports = {
       success: true,
     });
   },
-  admingetcourse: async (req, res) => {
-    const cid = req.params.cid;
-    console.log(cid + ' is cid');
-    const course = await Course.findOne({ cid }).lean();
-    if (course) {
-      const topics = await Topic.find({ cid }).sort({ sn: 1 }).lean();
-      if (topics && topics.length > 2) {
-        console.log(course.name + ' is course');
-        res.json({ success: true, course, topics });
-      } else {
-        const courses = await Course.find().limit(12).sort({ ordstring: -1 });
-        res.json({ error: true, courses });
-      }
-    } else {
-      const courses = await Course.find().limit(12).sort({ ordstring: -1 });
-      res.json({ error: true, courses });
-    }
-  },
-
-  
 };

@@ -11,7 +11,6 @@ function money(amount) {
 const courseSchema = new mongoose.Schema({
   allstudents:{type:Number,default:0},
   students:{type:Number,default:0},
-
   name: String,
   batches:{type:Number,default:0},
   category:String,
@@ -25,17 +24,21 @@ const courseSchema = new mongoose.Schema({
   cid: String,
   intro: String,
   introlink: String,
+  introid: {type:String,default:process.env.videoid},
   
   teacher: String,
   teacherid: String,
   profit:{type:Number,default:0},
   topics:{type:Number,default:0},
+  courseintrolinktimes: {type:Number,default:0},
+
 
   editedby: String,
   lastedit: String,
   lasteditby: String,
   lastedittime: String,
   dummy:{type:Boolean,default:false},
+  firstupload:{type:Boolean,default:true},
   timesedited:{type:Number,default:0},
   leads:{type:Number,default:0},
   durationm: String,

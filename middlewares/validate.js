@@ -133,9 +133,27 @@ const adminvalid = async (req, res, next) => {
     res.json({ error: true });
   }
 };
+const  teacherValid = async (req, res, next) => {
+  const obi = req.headers.apikey;
+  const userid = req.headers.userid;
+  if (obi == process.env.obi) {
+    console.log(userid + " is useridh @ " + new Date().toLocaleTimeString());
+    const user = await User.findOne({userid,isTeacher:true})
+    if(user){
+      req.user = user
+      next();
+    }
+    else{
+      res.json({ error: true });
+
+    }
+  } else {
+    res.json({ error: true });
+  }
+};
 
 
 module.exports = {
-  valid,greet,adminvalid
+  valid,greet,adminvalid, teacherValid
   
 };

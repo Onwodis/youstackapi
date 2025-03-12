@@ -1,30 +1,33 @@
+const express = require("express");
+const path = require("path");
+const http = require("http");
+const dotenv = require("dotenv").config();
+const bodyParser = require("body-parser");
+const exphbs = require("express-handlebars");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const mongoose = require("mongoose");
+const fileUpload = require("express-fileupload");
+const { Server } = require("socket.io");
 
-const express = require('express');
-const path = require('path');
-
-const dotenv = require('dotenv').config();
-const bodyParser = require('body-parser');
-const exphbs = require('express-handlebars');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const mongoose = require('mongoose');
-
-const som = new Date();
-const fy = new Date(som.getFullYear() + 3 ,som.getMonth() ,som.getDate() );
-console.log(fy.toDateString() + " is new fy");
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.fe.slice(0, -1), // Ensure this matches your frontend URL
+    methods: ["GET", "POST"],
+  },
+});
+app.set("socketio", io);
+
 app.use(cors());
-
-// app.use(bodyParser.json());
-// app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
-
-
-app.use(cors());
-app.use(express.json()); // ✅ Use only this for JSON requests
-app.use(express.urlencoded({ extended: true })); // ✅ Use only this for URL-encoded form data
-app.use(express.static('public'));
+app.use(express.json({ limit: "900mb" }));
+app.use(express.urlencoded({ limit: "950mb", extended: true }));
+app.use(express.static("public"));
 app.use(cookieParser());
+app.use(fileUpload());
+
+// Set up Handlebars
 app.engine(
   ".hbs",
   exphbs.engine({
@@ -36,75 +39,48 @@ app.engine(
     },
     helpers: {
       ifnot: function (arr, options) {
-        if (!arr) {
-          return options.fn(this);
-        }
-        return options.inverse(this);
+        return arr ? options.inverse(this) : options.fn(this);
       },
     },
   })
 );
 app.set("view engine", ".hbs");
 
-const mainRoutes = require('./routes/mainRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-const tutorRoutes = require('./routes/tutorRoutes');
 
 
-function currentDate() {
-  // Create a new Date object with the current time in UTC
-  let ddate = new Date();
+// ✅ Corrected Socket.io Handling
+io.on("connection", (socket) => {
+  console.log(`Client connected with socket ID: ${socket.id}`);
 
-  // Adjust the timezone offset to your desired timezone
-  // For example, GMT+1 (British Summer Time)
-  ddate.setHours(ddate.getHours() + 1);
+  socket.on("disconnect", () => {
+    console.log("A client disconnected");
+  });
+});
 
-  const weekday = ["Sun", "Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
+// Routes
+const mainRoutes = require("./routes/mainRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+const tutorRoutes = require("./routes/tutorRoutes");
 
-  // Format the date and time as a string
-  const shortDateTime = weekday[ddate.getDay()] + "," + ddate.toLocaleString();
+app.use("/", mainRoutes);
+app.use("/admin", adminRoutes);
+app.use("/tutor", tutorRoutes);
 
-  return shortDateTime;
-}
-
-
-
+// ✅ Corrected MongoDB Connection
 mongoose
   .connect(process.env.MONGOOSE, {
-    useNewUrlParser: false,
+    useNewUrlParser: true, // Fixed incorrect flag
     useUnifiedTopology: true,
   })
   .then(() => {
-    console.log("DB Connected Successfully ! ");
+    console.log("DB Connected Successfully!");
   })
   .catch((err) => {
-    console.log("Error occurred during DB Connection " + err.message);
+    console.error("Error occurred during DB Connection:", err.message);
   });
 
-// MiddleWare
-
-
-
-app.use('/', mainRoutes);
-app.use('/admin', adminRoutes);
-app.use('/tutor', tutorRoutes);
-
-
-
-function rcron() {
-  console.log("cron jobs are actively running " + currentDate());
-  cron.schedule("0 0 * * *", async () => {
-    bday();
-    Run();
-  });
-}
-
-
-
+// ✅ Use `server.listen` instead of `app.listen`
 const PORT = process.env.PORT 
-
-
-
-app.listen(PORT, () => {
-  console.log(`app is listening on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });

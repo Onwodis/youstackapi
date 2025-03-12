@@ -12,6 +12,7 @@ router.get("/deploy/:cid", adminvalid, adminController.deploy);
 router.get("/togglecoursedep", adminvalid, adminController.togglecoursedep);
 router.get("/admingetcourse/:cid", adminvalid, adminController.admingetcourse);
 router.get("/togglemant", adminvalid, adminController.togglemant);
+router.get("/updatetveri", adminvalid, adminController.updatetveri);
 router.get("/getcourses", adminvalid, adminController.getcourses);
 router.get("/getteachers", adminvalid, adminController.getteachers);
 router.get("/getcategories", adminvalid, adminController.getcategories);

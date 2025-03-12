@@ -21,6 +21,7 @@ const topicSchema = new mongoose.Schema({
   cname: String,
 
   cid: String,
+  videoid: {type:String,default:process.env.videoid},
   tid: String,
   topid: String,
   title: String,

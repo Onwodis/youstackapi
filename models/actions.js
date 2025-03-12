@@ -5,6 +5,7 @@ const actionSchema = new mongoose.Schema({
   masterid: String,
   slave: String,
   slaveid: String,
+  ip: String,
   story: String,
   actionid: String,
   opid: String,

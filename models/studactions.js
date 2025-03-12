@@ -8,6 +8,7 @@ const actionSchema = new mongoose.Schema({
   story: String,
   actionid: String,
   opid: String,
+  ip: String,
   when: String,
   slavestory: String,
   mastertype: String,

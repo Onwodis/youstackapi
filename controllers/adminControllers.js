@@ -2834,6 +2834,33 @@ function genr(n) {
 
   return randomNum;
 }
+function updateStories(logEntries) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to midnight to compare only dates
+
+  return logEntries.map(entry => {
+      const ordDate = new Date(entry.ordstring);
+      ordDate.setHours(0, 0, 0, 0); // Ensure only date part is compared
+
+      const timeDiff = Math.floor((today - ordDate) / (1000 * 60 * 60 * 24)); // Days difference
+
+      let timeText = "today";
+      if (timeDiff === 1) {
+          timeText = "yesterday";
+      } else if (timeDiff > 1) {
+          timeText = `${timeDiff} days ago`;
+      }
+
+      // Replace "today" in story and masterstory only if it's not actually today
+      if (timeDiff > 0) {
+          entry.story = entry.story.replace("today", timeText);
+          entry.masterstory = entry.masterstory.replace("today", timeText);
+      }
+
+      return entry;
+  });
+}
+
 
 module.exports = {
   Home: async (req, res) => {
@@ -2988,7 +3015,29 @@ module.exports = {
         live:ddata.plive,
         youcent:ddata.youcent,
         courseauto:ddata.courseauto,
+        tveri:ddata.tveri,
         timeout:ddata.timeout
+      }
+
+
+    res.json({ laws ,success:true});
+  },
+  updatetveri: async (req, res) => {
+   
+    const ddata = await Data.findOne({isdata:true})
+    ddata.tveri = !ddata.tveri
+
+    
+    await ddata.save()
+    
+
+    const laws = {
+        maintenance:ddata.maintenance,
+        live:ddata.plive,
+        youcent:ddata.youcent,
+        timeout:ddata.timeout,
+        tveri:ddata.tveri
+
       }
 
 
@@ -3007,7 +3056,8 @@ module.exports = {
         maintenance:ddata.maintenance,
         live:ddata.plive,
         youcent:ddata.youcent,
-        timeout:ddata.timeout
+        timeout:ddata.timeout,
+        tveri:ddata.tveri
 
       }
 
@@ -3027,6 +3077,7 @@ module.exports = {
         maintenance:ddata.maintenance,
         live:ddata.live,
         youcent:ddata.youcent,
+        tveri:ddata.tveri,
         timeout:ddata.timeout
 
       }
@@ -3045,7 +3096,8 @@ module.exports = {
         maintenance:ddata.maintenance,
         live:ddata.live,
         youcent:ddata.youcent,
-        timeout:ddata.timeout
+        timeout:ddata.timeout,
+        tveri:ddata.tveri
 
       }
 
@@ -3063,6 +3115,7 @@ module.exports = {
         maintenance:ddata.maintenance,
         live:ddata.live,
         youcent:ddata.youcent,
+        tveri:ddata.tveri,
         timeout:ddata.timeout
 
       }
@@ -3071,7 +3124,7 @@ module.exports = {
     res.json({ laws ,success:true});
   },
   db: async (req, res) => {
-    console.log("fetching db data");
+    console.log("fetching jdb data");
     const allusers = await User.countDocuments()
     const courses = await Course.countDocuments()
     const categories = await Category.countDocuments()
@@ -3089,7 +3142,8 @@ module.exports = {
         maintenance:ddata.maintenance,
         live:ddata.plive,
         youcent:ddata.youcent,
-        timeout:ddata.timeout
+        timeout:ddata.timeout,
+        tveri:ddata.tveri
 
       }
 
@@ -3264,7 +3318,7 @@ module.exports = {
     const skip = (page - 1) * limit;
 
     let trans = [];
-    let transort = req.user.transort;
+    let transort = req.user.coursesort;
     if (transort == "asc") {
       trans = await Transact.find()
         .skip(skip)
@@ -3299,8 +3353,8 @@ module.exports = {
     });
   },
   getactions: async (req, res) => {
-    const actions = await Action.find().sort({ ordstring: -1 });
-    const bactions = await Actionb.find().sort({ ordstring: -1 });
+    const actions = updateStories(await Action.find().sort({ ordstring: -1 }));
+    const bactions = updateStories(await Actionb.find().sort({ ordstring: -1 }));
     console.log(actions.length + " getting actionss");
 
     res.json({

@@ -3844,6 +3844,9 @@ module.exports = {
             actiontype: 'teacher to topic',
           });
           lic();
+          const ddata = await Data.findOne({isdata:true})
+          ddata.videoid = videoId
+          await ddata.save()
 
           console.log('Upload successful:', introlink);
 
@@ -3852,7 +3855,7 @@ module.exports = {
           });
           const topics= await Topic.find({cid}).sort({sn:1})
 
-          res.json({ success: true, videoId, videoUrl: introlink, course ,topic ,topics});
+          res.json({ success: true, course ,topic ,topics});
         },
 
         // 🔥🔥🔥 Corrected Progress Callback
@@ -4207,7 +4210,7 @@ module.exports = {
         name: course.name + ' introduction',
         description: course.desc,
         privacy: {
-          view: 'nobody', // Allows access via direct link
+          view: 'anybody', // Allows access via direct link
           embed: 'whitelist', // Allows embedding only on your site
         },
         embed: {
@@ -4301,12 +4304,15 @@ module.exports = {
           lic();
 
           console.log('Upload successful:', introlink);
+          const ddata = await Data.findOne({isdata:true})
+          ddata.videoid = videoId
+          await ddata.save()
 
           fs.unlink(tempFilePath, (err) => {
             if (err) console.error('Failed to delete temp file:', err);
           });
 
-          res.json({ success: true, videoId, videoUrl: introlink, course });
+          res.json({ success: true,  course });
         },
 
         // 🔥🔥🔥 Corrected Progress Callback

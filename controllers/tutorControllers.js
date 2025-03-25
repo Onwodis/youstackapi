@@ -5,7 +5,10 @@ const multer = require('multer');
 const path = require('path');
 const Transact = require('../models/transaction');
 const Teacher = require('../models/teacher');
+const Bank = require('../models/banks');
 const Topic = require('../models/topics');
+const Teatransact = require('../models/teatrans');
+
 const fs = require('fs');
 const fileUpload = require('express-fileupload');
 // const Contact = require('../models/message');
@@ -170,6 +173,10 @@ function mandy() {
 }
 // console.log('voucher  is ' + voucher());
 function capitalise(x) {
+  return x.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+console.log(capitalise(' how are you my son'));
+function capitaliseb(x) {
   var b = x.charAt(0).toUpperCase() + x.slice(1);
   return b;
 }
@@ -2973,8 +2980,6 @@ const deleteVideoBytopid = async (topid) => {
   }
 };
 
-
-
 const restrict = async (videoId) => {
   try {
     const response = await new Promise((resolve, reject) => {
@@ -3039,7 +3044,10 @@ const deleteVideoById = async (videoid) => {
           if (error) {
             if (statusCode === 404) {
               console.log(`⚠️ Video ${videoid} not found, skipping delete.`);
-              return resolve({ success: false, message: `Video ${videoid} not found` });
+              return resolve({
+                success: false,
+                message: `Video ${videoid} not found`,
+              });
             }
             console.error(`❌ Failed to delete video ${videoid}:`, error);
             return reject(error);
@@ -3056,7 +3064,6 @@ const deleteVideoById = async (videoid) => {
     return { success: false, message: 'Delete failed', error };
   }
 };
-
 
 module.exports = {
   Home: async (req, res) => {
@@ -3090,6 +3097,7 @@ module.exports = {
     const otopic = { ...guy };
     topic.title = title;
     topic.sn = sn;
+    topic.updated= currentDate();
     topic.subtopic = subtopic;
     await topic.save();
     if (otopic.sb != topic.sn && ntopic) {
@@ -3650,22 +3658,477 @@ module.exports = {
     res.json({ success: true, user: user });
   },
 
+  updatecourseprofile: async (req, res) => {
+    const user = req.user;
+    let { desc, sdesc, name, price, cid, catid } = req.body;
+    const category = await Category.findOne({ catid });
+    name = capitalise(name);
+    const course = await Course.findOne({ cid });
+    const cc = course.toObject();
+    const ocourse = { ...cc };
+    const trans = await Transact.find({ cid });
+    if (trans && trans.length > 0) {
+      for (let i = 0; i < trans.length; i++) {
+        const tran = trans[i];
+        tran.course = name;
+        await tran.save();
+      }
+    }
+    const mycourses = await Mycourse.find({ cid });
+    if (mycourses && mycourses.length > 0) {
+      for (let i = 0; i < mycourses.length; i++) {
+        const mycourse = mycourses[i];
+        // mycourse.course = name
+        mycourse.name = name;
+        mycourse.desc = desc;
+        mycourse.sdesc = sdesc;
+        mycourse.catid = catid;
+        mycourse.category = category.name;
+
+        await mycourse.save();
+      }
+    }
+    const topics = await Topic.find({ cid });
+    if (topics && topics.length > 0) {
+      for (let i = 0; i < topics.length; i++) {
+        const topic = topics[i];
+        // topic.course = name
+        topic.cname = name;
+        topic.desc = desc;
+        topic.sdesc = sdesc;
+
+        await topic.save();
+      }
+    }
+    course.desc = desc;
+    course.sdesc = sdesc;
+    course.price = price;
+    course.catid = catid;
+    course.category = category.name;
+    course.dprice = money(price);
+    course.name = capitalise(name);
+    await course.save();
+
+    const categories = await Category();
+    if (categories && categories.length > 0) {
+      for (let i = 0; i < categories.length; i++) {
+        const cat = categories[i];
+        const courses = await Course.countDocuments({ catid: cat.catid });
+        const students = await Mycourse.countDocuments({ catid: cat.catid });
+        cat.courses = courses;
+        cat.students = students;
+        await cat.save();
+      }
+    }
+
+    console.log(desc, sdesc, name, price, cid);
+    let actionstory = `${user.name} updated ${
+      ocourse.name
+    } course profile from  ${ocourse.name}, ${ocourse.dprice} , ${
+      ocourse.desc
+    },${ocourse.sdesc}, ${ocourse.category}  to \n\n ${course.name}, ${
+      course.dprice
+    } , ${course.desc},${course.sdesc} ,${
+      course.category
+    }, this was done on ${currentDate()}`;
+
+    // Append new action story properly
+    let useractions =
+      user.useractions.length > 6
+        ? user.useractions + '%%' + actionstory
+        : actionstory;
+
+    // Split into array
+    let actionsarray = useractions.split('%%');
+
+    // Keep only the latest 10 actions
+    if (actionsarray.length > 50) {
+      actionsarray = actionsarray.slice(actionsarray.length - 50);
+    }
+
+    // Reconstruct `useractions`
+    useractions = actionsarray.join('%%');
+
+    user.useractions = useractions;
+    await user.save();
+
+    const opid = 'op' + getserialnum(100000);
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    await Action.create({
+      master: user.name,
+      masterid: user.userid,
+      slave: course.name,
+      ip,
+      slaveid: cid,
+      actionid: 'act' + getserialnum(1000),
+      opid,
+      mandy: mandy(),
+      dmy: mandy(),
+      when: currentDate(),
+
+      masterfirstemail: user.firstemail,
+      slavefirstemail: course.name,
+      slavestory: actionstory,
+      story: actionstory,
+      masterstory: actionstory,
+      mastertype: user.type,
+      slaveype: 'course-profile',
+      masterimage: user.image,
+      slaveimage: '',
+      ordstring: new Date(),
+      ifhost: false,
+      actiontype: 'tutor to topic',
+    });
+
+    res.json({ success: true, user, course });
+  },
+  updatecourseimage: async (req, res) => {
+    const user = req.user;
+    const { cid } = req.body;
+    const image = req.files?.image;
+    const uploadDir = path.join(__dirname, '..', 'public', 'courseimages');
+    const course = await Course.findOne({ cid });
+
+    const nname = course.image.split('/');
+    const filename = nname[nname.length - 1];
+    console.log(filename + ' is course imag');
+
+    const tempFilePath = path.join(
+      __dirname,
+      '..',
+      'public',
+      'courseimages',
+      filename
+    );
+    try {
+      fs.unlink(tempFilePath, (err) => {
+        if (err) console.error('Failed to delete temp file:', err);
+      });
+    } catch (error) {
+      console.log("couldn't delete previous image");
+    }
+
+    const imagePath = path.join(uploadDir, `${Date.now()}-${image.name}`);
+    console.log(imagePath + ' is imagepath');
+    await image.mv(imagePath);
+
+    const imageUrl = `${process.env.api}courseimages/${path.basename(
+      imagePath
+    )}`;
+
+    course.image = imageUrl;
+    await course.save();
+
+    let actionstory = `${user.name} updated ${
+      course.name
+    } course image, this was done on ${currentDate()}`;
+
+    // Append new action story properly
+    let useractions =
+      user.useractions.length > 6
+        ? user.useractions + '%%' + actionstory
+        : actionstory;
+
+    // Split into array
+    let actionsarray = useractions.split('%%');
+
+    // Keep only the latest 10 actions
+    if (actionsarray.length > 50) {
+      actionsarray = actionsarray.slice(actionsarray.length - 50);
+    }
+
+    // Reconstruct `useractions`
+    useractions = actionsarray.join('%%');
+
+    user.useractions = useractions;
+    await user.save();
+
+    const opid = 'op' + getserialnum(100000);
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    await Action.create({
+      master: user.name,
+      masterid: user.userid,
+      slave: course.name,
+      ip,
+      slaveid: cid,
+      actionid: 'act' + getserialnum(1000),
+      opid,
+      mandy: mandy(),
+      dmy: mandy(),
+      when: currentDate(),
+
+      masterfirstemail: user.firstemail,
+      slavefirstemail: course.name,
+      slavestory: actionstory,
+      story: actionstory,
+      masterstory: actionstory,
+      mastertype: user.type,
+      slavetype: 'course-image',
+      masterimage: user.image,
+      slaveimage: '',
+      ordstring: new Date(),
+      ifhost: false,
+      actiontype: 'tutor to course image',
+    });
+
+    res.json({ success: true, user, course });
+  },
+  uploadcompliance: async (req, res) => {
+    const user = req.user;
+    const { bankid, accountNumber } = req.body;
+    console.log(bankid, accountNumber);
+    const { teacherImage, complianceDoc } = req.files;
+    console.log(teacherImage, complianceDoc);
+    const uploadDir = path.join(__dirname, '..', 'public', 'compliance');
+
+    const image = req.files?.teacherImage;
+
+    if (user.image && user.image.length > 4) {
+      const nname = user.image.split('/');
+      const filename = nname[nname.length - 1];
+      console.log(filename + ' is course imag');
+
+      const tempFilePath = path.join(
+        __dirname,
+        '..',
+        'public',
+        'compliance',
+        filename
+      );
+      try {
+        fs.unlink(tempFilePath, (err) => {
+          if (err) console.error('Failed to delete temp file:', err);
+        });
+      } catch (error) {
+        console.log("couldn't delete previous image");
+      }
+    }
+    const exta = image.name.split('.')[1];
+    const imagePath = path.join(
+      uploadDir,
+      `${Date.now()}-${user.name.split(' ').join('-')}.${exta}`
+    );
+    console.log(imagePath + ' is imagepath');
+    await image.mv(imagePath);
+
+    const imageUrl = `${process.env.api}compliance/${path.basename(imagePath)}`;
+
+    const imageb = req.files?.complianceDoc;
+
+    if (user.compliance && user.compliance.length > 4) {
+      const nname = user.compliance.split('/');
+      const filename = nname[nname.length - 1];
+      console.log(filename + ' is course imag');
+
+      const tempFilePath = path.join(
+        __dirname,
+        '..',
+        'public',
+        'compliance',
+        filename
+      );
+      try {
+        fs.unlink(tempFilePath, (err) => {
+          if (err) console.error('Failed to delete temp file:', err);
+        });
+      } catch (error) {
+        console.log("couldn't delete previous image");
+      }
+    }
+    const extb = image.name.split('.')[1];
+    const imagePathb = path.join(
+      uploadDir,
+      `${Date.now()}-${user.name.split(' ').join('-')}-comp.${extb}`
+    );
+    console.log(imagePathb + ' is imagepath');
+    await imageb.mv(imagePathb);
+
+    const imageUrlb = `${process.env.api}compliance/${path.basename(
+      imagePathb
+    )}`;
+    const bank = await Bank.findOne({ bankid });
+    user.image = imageUrl;
+    user.compliance = imageUrlb;
+    user.bank = bank.name;
+    user.bankid = bankid;
+    user.vpending = true;
+    user.accountnumber = accountNumber;
+    await user.save();
+
+    let actionstory = `${
+      user.name
+    } updated compliance documents, this was done on ${currentDate()}`;
+
+    // Append new action story properly
+    let useractions =
+      user.useractions.length > 6
+        ? user.useractions + '%%' + actionstory
+        : actionstory;
+
+    // Split into array
+    let actionsarray = useractions.split('%%');
+
+    // Keep only the latest 10 actions
+    if (actionsarray.length > 50) {
+      actionsarray = actionsarray.slice(actionsarray.length - 50);
+    }
+
+    // Reconstruct `useractions`
+    useractions = actionsarray.join('%%');
+
+    user.useractions = useractions;
+    await user.save();
+
+    const opid = 'op' + getserialnum(100000);
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    await Action.create({
+      master: user.name,
+      masterid: user.userid,
+      slave: 'compliance',
+      ip,
+      slaveid: user.userid,
+      actionid: 'act' + getserialnum(1000),
+      opid,
+      mandy: mandy(),
+      dmy: mandy(),
+      when: currentDate(),
+
+      masterfirstemail: user.firstemail,
+      slavefirstemail: 'compliance',
+      slavestory: actionstory,
+      story: actionstory,
+      masterstory: actionstory,
+      mastertype: user.type,
+      slavetype: 'compliance',
+      masterimage: user.image,
+      slaveimage: '',
+      ordstring: new Date(),
+      ifhost: false,
+      actiontype: 'tutor to compliance',
+    });
+
+    res.json({ success: true, user });
+  },
+  deletecourse: async (req, res) => {
+    const user = req.user;
+    const { cid } = req.params;
+
+    const course = await Course.findOne({ cid });
+
+    const nname = course.image.split('/');
+    const filename = nname[nname.length - 1];
+    console.log(filename + ' is course imag');
+
+    const tempFilePath = path.join(
+      __dirname,
+      '..',
+      'public',
+      'courseimages',
+      filename
+    );
+    const topics = await Topic.find({ cid });
+
+    try {
+      fs.unlink(tempFilePath, (err) => {
+        if (err) console.error('Failed to delete temp file:', err);
+        deleteVideoById(course.introid);
+        if (topics && topics.length > 0) {
+          for (let i = 0; i < topics.length; i++) {
+            const topic = topics[i];
+            deleteVideoById(topic.videoid);
+          }
+        }
+      });
+    } catch (error) {
+      console.log("couldn't delete previous image");
+    }
+    await Topic.deleteMany({ cid });
+
+    let actionstory = `${user.name} deleted a course  ${
+      course.name
+    }, this was done on ${currentDate()}`;
+
+    // Append new action story properly
+    let useractions =
+      user.useractions.length > 6
+        ? user.useractions + '%%' + actionstory
+        : actionstory;
+
+    // Split into array
+    let actionsarray = useractions.split('%%');
+
+    // Keep only the latest 10 actions
+    if (actionsarray.length > 50) {
+      actionsarray = actionsarray.slice(actionsarray.length - 50);
+    }
+
+    // Reconstruct `useractions`
+    useractions = actionsarray.join('%%');
+
+    user.useractions = useractions;
+    await user.save();
+    await Course.deleteOne({ cid });
+    const categories = await Category();
+    if (categories && categories.length > 0) {
+      for (let i = 0; i < categories.length; i++) {
+        const cat = categories[i];
+        const courses = await Course.countDocuments({ catid: cat.catid });
+        const students = await Mycourse.countDocuments({ catid: cat.catid });
+        cat.courses = courses;
+        cat.students = students;
+        await cat.save();
+      }
+    }
+
+    const opid = 'op' + getserialnum(100000);
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    await Action.create({
+      master: user.name,
+      masterid: user.userid,
+      slave: course.name,
+      ip,
+      slaveid: cid,
+      actionid: 'act' + getserialnum(1000),
+      opid,
+      mandy: mandy(),
+      dmy: mandy(),
+      when: currentDate(),
+
+      masterfirstemail: user.firstemail,
+      slavefirstemail: course.name,
+      slavestory: actionstory,
+      story: actionstory,
+      masterstory: actionstory,
+      mastertype: user.type,
+      slavetype: 'course',
+      masterimage: user.image,
+      slaveimage: '',
+      ordstring: new Date(),
+      ifhost: false,
+      actiontype: 'tutor to course ',
+    });
+
+    res.json({ success: true, user });
+  },
   dbb: async (req, res) => {
     console.log('fetching tutor db data');
 
-    const courses = await Course.find({ teacherid: req.user.userid }).sort({name:1})
-  
-  
-    const students = sumByKey(courses, 'students')
-    console.log(students + " is tutor students")
+    const courses = await Course.find({ teacherid: req.user.userid }).sort({
+      name: 1,
+    });
 
-    const data ={
-      students
-    }
+    const students = sumByKey(courses, 'students');
+    console.log(students + ' is tutor students');
 
+    const data = {
+      students,
+    };
 
-
-    res.json({ data, courses,user:req.user, success: true });
+    res.json({ data, courses, user: req.user, success: true });
   },
   uploadnewvideo: async (req, res) => {
     try {
@@ -3707,7 +4170,7 @@ module.exports = {
     }
   },
   updatetopicvideo: async (req, res) => {
-    console.log("updating topic video")
+    console.log('updating topic video');
     try {
       const io = req.app.get('socketio'); // ✅ Get io instance from app.js
       const socketId = req.headers['socket-id'];
@@ -3728,9 +4191,9 @@ module.exports = {
 
       if (topic.videoid !== process.env.videoid) {
         // deleteVideoByCid(cid);
-        console.log("deleting video with videoid "+ topic.videoid)
-   
-        deleteVideoById(topic.videoid)
+        console.log('deleting video with videoid ' + topic.videoid);
+
+        deleteVideoById(topic.videoid);
       }
 
       if (!req.files || !req.files.video) {
@@ -3844,18 +4307,18 @@ module.exports = {
             actiontype: 'teacher to topic',
           });
           lic();
-          const ddata = await Data.findOne({isdata:true})
-          ddata.videoid = videoId
-          await ddata.save()
+          const ddata = await Data.findOne({ isdata: true });
+          ddata.videoid = videoId;
+          await ddata.save();
 
           console.log('Upload successful:', introlink);
 
           fs.unlink(tempFilePath, (err) => {
             if (err) console.error('Failed to delete temp file:', err);
           });
-          const topics= await Topic.find({cid}).sort({sn:1})
+          const topics = await Topic.find({ cid }).sort({ sn: 1 });
 
-          res.json({ success: true, course ,topic ,topics});
+          res.json({ success: true, course, topic, topics });
         },
 
         // 🔥🔥🔥 Corrected Progress Callback
@@ -3889,25 +4352,21 @@ module.exports = {
     }
   },
   deltopic: async (req, res) => {
-    console.log("updating topic video")
+    console.log('updating topic video');
     try {
-    
-      const { cid, topid  } = req.body
-      const topic = await Topic.findOne({topid})
+      const { cid, topid } = req.body;
+      const topic = await Topic.findOne({ topid });
       console.log('about todelete topic vid...' + cid, topid);
 
       const course = await Course.findOne({ cid });
       const user = req.user;
 
-      
-
       if (topic.videoid !== process.env.videoid) {
         // deleteVideoByCid(cid);
-        console.log("deleting video with videoid "+ topic.videoid)
-   
-        deleteVideoById(topic.videoid)
-      }
+        console.log('deleting video with videoid ' + topic.videoid);
 
+        deleteVideoById(topic.videoid);
+      }
 
       let actionstory = `${user.name} deleted ${course.name}  ${
         topic.title
@@ -3933,10 +4392,8 @@ module.exports = {
       user.useractions = useractions;
       await user.save();
 
-
       const opid = 'op' + getserialnum(100000);
-      const ip =
-        req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+      const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
       await Action.create({
         master: user.name,
@@ -3963,15 +4420,13 @@ module.exports = {
         ifhost: false,
         actiontype: 'teacher to topic',
       });
-      await Topic.deleteOne({topid})
+      await Topic.deleteOne({ topid });
 
       lic();
-      const topics = await Topic.find({cid})
-      course.topics = topics.length
-      await course.save()
-      res.json({ success:true,topics,course});
-
-      
+      const topics = await Topic.find({ cid });
+      course.topics = topics.length;
+      await course.save();
+      res.json({ success: true, topics, course });
     } catch (error) {
       console.error('Server error:', error);
       res
@@ -4081,6 +4536,58 @@ module.exports = {
     await cos.save();
     res.json({ success: true, topics, course: cos });
   },
+  getcategories: async (req, res) => {
+    
+      const cats = await Category.find().sort({ name: 'asc' });
+
+      res.json({ success: true,cats });
+
+  },
+  gettrans: async (req, res) => {
+      // Get page and limit from query params with default values
+      const page = parseInt(req.query.page) || 1;
+      const userid = (req.query.userid)
+  
+      const limit = parseInt(req.query.limit) || 10;
+  
+      // Calculate the number of documents to skip
+      const skip = (page - 1) * limit;
+  
+      let trans = [];
+      let transort = req.user.coursesort;
+      if (transort == 'asc') {
+        trans = await Teatransact.find({teacherid:userid})
+          .skip(skip)
+          .limit(limit)
+          .sort({ name: 'asc' });
+      } else if (transort == 'desc') {
+        trans = await Teatransact.find({teacherid:userid}).skip(skip).limit(limit).sort({ name: -1 });
+      } else if (transort == 'newest') {
+        trans = await Teatransact.find({teacherid:userid})
+          .skip(skip)
+          .limit(limit)
+          .sort({ ordstring: -1 });
+      } else {
+        trans = await Teatransact.find({teacherid:userid})
+          .skip(skip)
+          .limit(limit)
+          .sort({ ordstring: 1 });
+      }
+      console.log(page + '_' + limit + ' is page and limit');
+  
+      const count = await Teatransact.countDocuments();
+      // console.log(trans.lemgth + " is trans length");
+  
+      const sum = money(sume(trans, 'amount'));
+  
+      res.json({
+        success: true,
+        totalPages: Math.ceil(count / limit),
+        currentPage: page,
+        inflow: trans,
+        sum,
+      });
+    },
   lock: async (req, res) => {
     let { cid } = req.params;
     const course = await Course.findOne({ cid });
@@ -4088,83 +4595,93 @@ module.exports = {
     if (course) {
       const user = req.user;
 
-      const ress = course.locked ? "unlocked" : "locked";
-      console.log("about to togglelock " + user.name);
-      let actionstory = `${user.name} ${ress} course( ${course.name}) , this was done on ${currentDate()}`;
-  
-      // Append new action story properly
-      let useractions =
-        user.useractions.length > 6
-          ? user.useractions + '%%' + actionstory
-          : actionstory;
-  
-      // Split into array
-      let actionsarray = useractions.split('%%');
-  
-      // Keep only the latest 10 actions
-      if (actionsarray.length > 50) {
-        actionsarray = actionsarray.slice(actionsarray.length - 50);
+      if (course.deployed) {
+        res.json({
+          course,
+          success: true,
+          deployed: true,
+        });
+      } else {
+        const ress = course.locked ? 'unlocked' : 'locked';
+        console.log('about to togglelock ' + user.name);
+        let actionstory = `${user.name} ${ress} course( ${
+          course.name
+        }) , this was done on ${currentDate()}`;
+
+        // Append new action story properly
+        let useractions =
+          user.useractions.length > 6
+            ? user.useractions + '%%' + actionstory
+            : actionstory;
+
+        // Split into array
+        let actionsarray = useractions.split('%%');
+
+        // Keep only the latest 10 actions
+        if (actionsarray.length > 50) {
+          actionsarray = actionsarray.slice(actionsarray.length - 50);
+        }
+
+        // Reconstruct `useractions`
+        useractions = actionsarray.join('%%');
+
+        user.useractions = useractions;
+        await user.save();
+
+        const nname = course.name;
+
+        const whichadmin = user;
+        const slave = course.name;
+        const when = currentDate();
+
+        const actionid = 'act' + getserialnum(100000);
+        const opid = 'op' + getserialnum(100000);
+        const story = `${capitalise(user.name)} ${ress} ${capitalise(
+          nname
+        )}  course on youstack `;
+        const slavestory = `${capitalise(nname)} was ${ress} by  ${capitalise(
+          whichadmin.name
+        )} `;
+        const masterstory = `I ${ress} a course called ${capitalise(nname)}'s `;
+
+        await Action.create({
+          master: user.name,
+          masterid: user.userid,
+          slave: course.name,
+          slaveid: cid,
+          actionid,
+          serious: true,
+          opid,
+          mandy: mandy(),
+          dmy: mandy(),
+          when,
+          masterfirstemail: whichadmin.firstemail,
+          slavefirstemail: course.name,
+          slavestory,
+          story,
+          masterstory,
+          mastertype: 'tutor',
+          slavetype: 'course',
+          masterimage: user.image,
+          slaveimage: course.image,
+          ordstring: new Date(),
+          ifhost: false,
+          actiontype: 'tutor to youstack',
+        });
+        lic();
+        // work(req.user.userid);
+        course.locked = !course.locked;
+        await course.save();
+        // const course = await Course.findOne({cid})
+        res.json({
+          course,
+          success: true,
+        });
       }
-  
-      // Reconstruct `useractions`
-      useractions = actionsarray.join('%%');
-  
-      user.useractions = useractions;
-      await user.save();
-
-      const nname = course.name;
-
-      const whichadmin = user;
-      const slave = course.name;
-      const when = currentDate();
-
-      const actionid = "act" + getserialnum(100000);
-      const opid = "op" + getserialnum(100000);
-      const story = `${capitalise(user.name)} ${ress} ${capitalise(
-        nname
-      )}  course on youstack `;
-      const slavestory = `${capitalise(nname)} was ${ress} by  ${capitalise(
-        whichadmin.name
-      )} `;
-      const masterstory = `I ${ress} a course called ${capitalise(nname)}'s `;
-
-      await Action.create({
-        master: user.name,
-        masterid: user.userid,
-        slave:course.name,
-        slaveid:cid,
-        actionid,
-        serious: true,
-        opid,
-        mandy: mandy(),
-        dmy: mandy(),
-        when,
-        masterfirstemail: whichadmin.firstemail,
-        slavefirstemail: course.name,
-        slavestory,
-        story,
-        masterstory,
-        mastertype: "tutor",
-        slavetype: "course",
-        masterimage: user.image,
-        slaveimage: course.image,
-        ordstring: new Date(),
-        ifhost: false,
-        actiontype: "tutor to youstack",
-      });
-      lic();
-      // work(req.user.userid);
-      course.locked = !course.locked;
-      await course.save();
-      // const course = await Course.findOne({cid})
-      res.json({
-        course,
-        success: true,
-      });
     } else {
-      const courses = await Course.find().sort({ name: "asc" });
+      const courses = await Course.find().sort({ name: 'asc' });
 
-      res.json({ success: true,error: true, });
+      res.json({ success: true, error: true });
     }
   },
   updateintrolink: async (req, res) => {
@@ -4183,8 +4700,7 @@ module.exports = {
 
       if (course.introid !== process.env.videoid) {
         // deleteVideoByCid(cid);
-        deleteVideoById(course.introid)
-
+        deleteVideoById(course.introid);
       }
 
       if (!req.files || !req.files.video) {
@@ -4304,15 +4820,15 @@ module.exports = {
           lic();
 
           console.log('Upload successful:', introlink);
-          const ddata = await Data.findOne({isdata:true})
-          ddata.videoid = videoId
-          await ddata.save()
+          const ddata = await Data.findOne({ isdata: true });
+          ddata.videoid = videoId;
+          await ddata.save();
 
           fs.unlink(tempFilePath, (err) => {
             if (err) console.error('Failed to delete temp file:', err);
           });
 
-          res.json({ success: true,  course });
+          res.json({ success: true, course });
         },
 
         // 🔥🔥🔥 Corrected Progress Callback

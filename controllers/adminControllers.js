@@ -1,8 +1,12 @@
 const User = require('../models/user');
-
+const fs = require('fs');
 const Transact = require('../models/transaction');
 const Teacher = require('../models/teacher');
+const im = require('imagemagick');
 const Topic = require('../models/topics');
+const Jimp = require('jimp');
+const Teatransact = require('../models/teatrans');
+const sharp = require('sharp');
 // const Contact = require('../models/message');
 const Data = require('../models/data');
 // const Support = require('../models/support');
@@ -13,6 +17,8 @@ const Actionb = require('../models/studactions');
 const moment = require('moment');
 const { nodem } = require('../models/nodemailer');
 const jwt = require('jsonwebtoken');
+const path = require('path');
+
 const bcrypt = require('bcryptjs');
 const Course = require('../models/course');
 const Mycourse = require('../models/mycourse');
@@ -288,7 +294,7 @@ async function lic() {
       }
     }
   } catch (err) {
-    console.error("Error running lic():", err);
+    console.error('Error running lic():', err);
     throw err; // Re-throw the error to propagate it up
   }
 }
@@ -2838,45 +2844,70 @@ function updateStories(logEntries) {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Reset time to midnight to compare only dates
 
-  return logEntries.map(entry => {
-      const ordDate = new Date(entry.ordstring);
-      ordDate.setHours(0, 0, 0, 0); // Ensure only date part is compared
+  return logEntries.map((entry) => {
+    const ordDate = new Date(entry.ordstring);
+    ordDate.setHours(0, 0, 0, 0); // Ensure only date part is compared
 
-      const timeDiff = Math.floor((today - ordDate) / (1000 * 60 * 60 * 24)); // Days difference
+    const timeDiff = Math.floor((today - ordDate) / (1000 * 60 * 60 * 24)); // Days difference
 
-      let timeText = "today";
-      if (timeDiff === 1) {
-          timeText = "yesterday";
-      } else if (timeDiff > 1) {
-          timeText = `${timeDiff} days ago`;
-      }
+    let timeText = 'today';
+    if (timeDiff === 1) {
+      timeText = 'yesterday';
+    } else if (timeDiff > 1) {
+      timeText = `${timeDiff} days ago`;
+    }
 
-      // Replace "today" in story and masterstory only if it's not actually today
-      if (timeDiff > 0) {
-          entry.story = entry.story.replace("today", timeText);
-          entry.masterstory = entry.masterstory.replace("today", timeText);
-      }
+    // Replace "today" in story and masterstory only if it's not actually today
+    if (timeDiff > 0) {
+      entry.story = entry.story.replace('today', timeText);
+      entry.masterstory = entry.masterstory.replace('today', timeText);
+    }
 
-      return entry;
+    return entry;
   });
 }
+const getAccountBalance = async () => {
+  const ddata = await Data.findOne({ isdata: true });
+  const sk = ddata.plive ? process.env.plive : process.env.ptest;
 
+  try {
+    const response = await axios.get('https://api.paystack.co/balance', {
+      headers: {
+        Authorization: `Bearer ${sk}`, // Replace with your Paystack secret key
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.data.status) {
+      const balanceInKobo = response.data.data[0].balance;
+      const balanceInNaira = balanceInKobo / 100;
+      return `₦${balanceInNaira.toLocaleString()}`;
+    } else {
+      throw new Error('Failed to retrieve balance');
+    }
+  } catch (error) {
+    console.error(
+      'Error fetching balance:',
+      error.response?.data || error.message
+    );
+    return 'Error retrieving balance';
+  }
+};
+const { promisify } = require('util');
+const unlinkAsync = promisify(fs.unlink);
 
 module.exports = {
   Home: async (req, res) => {
-
     const things = {
-        name:"things"
-    }
+      name: 'things',
+    };
 
     res.json({ things });
   },
   getcategories: async (req, res) => {
-    console.log("fetching courses data");
-    
-    // const courses = await Course.find().sort({name:1})
-    
+    console.log('fetching courses data');
 
+    // const courses = await Course.find().sort({name:1})
 
     // res.json({ success:true,courses});
 
@@ -2888,39 +2919,50 @@ module.exports = {
 
     let courses = [];
     let catsort = req.user.catsort;
-    if (catsort == "asc") {
-      courses = await Category.find().skip(skip).limit(limit).sort({ name: "asc" });
-    } else if (catsort == "desc") {
-      courses = await Category.find().skip(skip).limit(limit).sort({ name: -1 });
-    } else if (catsort == "newest") {
-      courses = await Category.find().skip(skip).limit(limit).sort({ ordstring: -1 });
-    
-    } else if (catsort == "students") {
-      courses = await Category.find().skip(skip).limit(limit).sort({ students: -1 });
-    }
-    else {
-      courses = await Category.find().skip(skip).limit(limit).sort({ ordstring: 1 });
+    if (catsort == 'asc') {
+      courses = await Category.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: 'asc' });
+    } else if (catsort == 'desc') {
+      courses = await Category.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: -1 });
+    } else if (catsort == 'newest') {
+      courses = await Category.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: -1 });
+    } else if (catsort == 'students') {
+      courses = await Category.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ students: -1 });
+    } else {
+      courses = await Category.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: 1 });
     }
 
     const count = await Category.countDocuments();
-   
 
-    console.log(count,limit)
+    console.log(count, limit);
     res.json({
       success: true,
-     
+
       totalPages: Math.ceil(count / limit), // Calculate total pages based on count and limit
-      currentPage:Number(page),
+      currentPage: Number(page),
       user: req.user,
-      courses,count
+      courses,
+      count,
     });
   },
-  getteachers: async (req, res) => {
-    console.log("fetching teacher data");
-    
-    // const courses = await Category.find().sort({name:1})
-    
+  getstudents: async (req, res) => {
+    console.log('fetching teacher data');
 
+    // const courses = await Category.find().sort({name:1})
 
     // res.json({ success:true,courses});
 
@@ -2932,39 +2974,105 @@ module.exports = {
 
     let courses = [];
     let teachersort = req.user.teachersort;
-    if (teachersort == "asc") {
-      courses = await User.find({isTeacher:true}).skip(skip).limit(limit).sort({ name: "asc" });
-    } else if (teachersort == "desc") {
-      courses = await User.find({isTeacher:true}).skip(skip).limit(limit).sort({ name: -1 });
-    } else if (teachersort == "newest") {
-      courses = await User.find({isTeacher:true}).skip(skip).limit(limit).sort({ ordstring: -1 });
-    
-    } else if (teachersort == "students") {
-      courses = await User.find({isTeacher:true}).skip(skip).limit(limit).sort({ students: -1 });
-    }
-    else {
-      courses = await User.find({isTeacher:true}).skip(skip).limit(limit).sort({ ordstring: 1 });
+    if (teachersort == 'asc') {
+      courses = await User.find({ isStudent: true })
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: 'asc' });
+    } else if (teachersort == 'desc') {
+      courses = await User.find({ isStudent: true })
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: -1 });
+    } else if (teachersort == 'newest') {
+      courses = await User.find({ isStudent: true })
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: -1 });
+    } else if (teachersort == 'students') {
+      courses = await User.find({ isStudent: true })
+        .skip(skip)
+        .limit(limit)
+        .sort({ students: -1 });
+    } else {
+      courses = await User.find({ isStudent: true })
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: 1 });
     }
 
-    const count = await User.countDocuments({isTeacher:true});
-   
+    const count = await User.countDocuments({ isStudent: true });
 
-    console.log(count,limit)
+    console.log(count, limit);
     res.json({
       success: true,
-     
+
       totalPages: Math.ceil(count / limit), // Calculate total pages based on count and limit
-      currentPage:Number(page),
+      currentPage: Number(page),
       user: req.user,
-      courses,count
+      courses,
+      count,
+    });
+  },
+  getteachers: async (req, res) => {
+    console.log('fetching teacher data');
+
+    // const courses = await Category.find().sort({name:1})
+
+    // res.json({ success:true,courses});
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+
+    // Calculate the number of documents to skip based on current page and limit
+    const skip = (page - 1) * limit;
+
+    let courses = [];
+    let teachersort = req.user.teachersort;
+    if (teachersort == 'asc') {
+      courses = await User.find({ isTeacher: true })
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: 'asc' });
+    } else if (teachersort == 'desc') {
+      courses = await User.find({ isTeacher: true })
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: -1 });
+    } else if (teachersort == 'newest') {
+      courses = await User.find({ isTeacher: true })
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: -1 });
+    } else if (teachersort == 'students') {
+      courses = await User.find({ isTeacher: true })
+        .skip(skip)
+        .limit(limit)
+        .sort({ students: -1 });
+    } else {
+      courses = await User.find({ isTeacher: true })
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: 1 });
+    }
+
+    const count = await User.countDocuments({ isTeacher: true });
+
+    console.log(count, limit);
+    res.json({
+      success: true,
+
+      totalPages: Math.ceil(count / limit), // Calculate total pages based on count and limit
+      currentPage: Number(page),
+      user: req.user,
+      courses,
+      count,
     });
   },
   getcourses: async (req, res) => {
-    console.log("fetching courses data");
-    
-    // const courses = await Category.find().sort({name:1})
-    
+    console.log('fetching courses data');
 
+    // const courses = await Category.find().sort({name:1})
 
     // res.json({ success:true,courses});
 
@@ -2976,195 +3084,203 @@ module.exports = {
 
     let courses = [];
     let coursesort = req.user.coursesort;
-    if (coursesort == "asc") {
-      courses = await Course.find().skip(skip).limit(limit).sort({ name: "asc" });
-    } else if (coursesort == "desc") {
+    if (coursesort == 'asc') {
+      courses = await Course.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: 'asc' });
+    } else if (coursesort == 'desc') {
       courses = await Course.find().skip(skip).limit(limit).sort({ name: -1 });
-    } else if (coursesort == "newest") {
-      courses = await Course.find().skip(skip).limit(limit).sort({ ordstring: -1 });
-    
-    } else if (coursesort == "students") {
-      courses = await Course.find().skip(skip).limit(limit).sort({ students: -1 });
-    }
-    else {
-      courses = await Course.find().skip(skip).limit(limit).sort({ ordstring: 1 });
+    } else if (coursesort == 'newest') {
+      courses = await Course.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: -1 });
+    } else if (coursesort == 'students') {
+      courses = await Course.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ students: -1 });
+    } else {
+      courses = await Course.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: 1 });
     }
 
     const count = await Course.countDocuments();
-   
 
-    console.log(count,limit)
+    console.log(count, limit);
     res.json({
       success: true,
-     
+
       totalPages: Math.ceil(count / limit), // Calculate total pages based on count and limit
-      currentPage:Number(page),
+      currentPage: Number(page),
       user: req.user,
-      courses,count
+      courses,
+      count,
     });
   },
   togglecoursedep: async (req, res) => {
-   
-    const ddata = await Data.findOne({isdata:true})
-    ddata.courseauto = !ddata.courseauto
-    await ddata.save()
-    
+    const ddata = await Data.findOne({ isdata: true });
+    ddata.courseauto = !ddata.courseauto;
+    await ddata.save();
 
     const laws = {
-        maintenance:ddata.maintenance,
-        live:ddata.plive,
-        youcent:ddata.youcent,
-        courseauto:ddata.courseauto,
-        tveri:ddata.tveri,
-        timeout:ddata.timeout
-      }
+      maintenance: ddata.maintenance,
+      live: ddata.plive,
+      youcent: ddata.youcent,
+      courseauto: ddata.courseauto,
+      tveri: ddata.tveri,
+      timeout: ddata.timeout,
+    };
 
-
-    res.json({ laws ,success:true});
+    res.json({ laws, success: true });
   },
   updatetveri: async (req, res) => {
-   
-    const ddata = await Data.findOne({isdata:true})
-    ddata.tveri = !ddata.tveri
+    const ddata = await Data.findOne({ isdata: true });
+    ddata.tveri = !ddata.tveri;
 
-    
-    await ddata.save()
-    
+    await ddata.save();
 
     const laws = {
-        maintenance:ddata.maintenance,
-        live:ddata.plive,
-        youcent:ddata.youcent,
-        timeout:ddata.timeout,
-        tveri:ddata.tveri
+      maintenance: ddata.maintenance,
+      live: ddata.plive,
+      youcent: ddata.youcent,
+      timeout: ddata.timeout,
+      tveri: ddata.tveri,
+    };
 
-      }
-
-
-    res.json({ laws ,success:true});
+    res.json({ laws, success: true });
   },
   togglelive: async (req, res) => {
-   
-    const ddata = await Data.findOne({isdata:true})
-    ddata.plive = !ddata.plive
+    const ddata = await Data.findOne({ isdata: true });
+    ddata.plive = !ddata.plive;
 
-    
-    await ddata.save()
-    
+    await ddata.save();
 
     const laws = {
-        maintenance:ddata.maintenance,
-        live:ddata.plive,
-        youcent:ddata.youcent,
-        timeout:ddata.timeout,
-        tveri:ddata.tveri
+      maintenance: ddata.maintenance,
+      live: ddata.plive,
+      youcent: ddata.youcent,
+      timeout: ddata.timeout,
+      tveri: ddata.tveri,
+    };
 
-      }
-
-
-    res.json({ laws ,success:true});
+    res.json({ laws, success: true });
   },
   updateyoucent: async (req, res) => {
-    const {youcent}  = req.query
-    console.log("updating timeout"+ youcent)
+    const { youcent } = req.query;
+    console.log('updating timeout' + youcent);
 
-    const ddata = await Data.findOne({isdata:true})
-    ddata.youcent = youcent
-    await ddata.save()
-    
+    const ddata = await Data.findOne({ isdata: true });
+    ddata.youcent = youcent;
+    await ddata.save();
 
     const laws = {
-        maintenance:ddata.maintenance,
-        live:ddata.live,
-        youcent:ddata.youcent,
-        tveri:ddata.tveri,
-        timeout:ddata.timeout
+      maintenance: ddata.maintenance,
+      live: ddata.live,
+      youcent: ddata.youcent,
+      tveri: ddata.tveri,
+      timeout: ddata.timeout,
+    };
 
-      }
-
-
-    res.json({ laws ,success:true});
+    res.json({ laws, success: true });
   },
   togglemant: async (req, res) => {
-   
-    const ddata = await Data.findOne({isdata:true})
-    ddata.maintenance = !ddata.maintenance
-    await ddata.save()
-    
+    const ddata = await Data.findOne({ isdata: true });
+    ddata.maintenance = !ddata.maintenance;
+    await ddata.save();
 
     const laws = {
-        maintenance:ddata.maintenance,
-        live:ddata.live,
-        youcent:ddata.youcent,
-        timeout:ddata.timeout,
-        tveri:ddata.tveri
+      maintenance: ddata.maintenance,
+      live: ddata.live,
+      youcent: ddata.youcent,
+      timeout: ddata.timeout,
+      tveri: ddata.tveri,
+    };
 
-      }
-
-
-    res.json({ laws ,success:true});
+    res.json({ laws, success: true });
   },
   updatetimeout: async (req, res) => {
-    const {timeout} =req.query
-    const ddata = await Data.findOne({isdata:true})
-    ddata.timeout = timeout
-    await ddata.save()
-    
+    const { timeout } = req.query;
+    const ddata = await Data.findOne({ isdata: true });
+    ddata.timeout = timeout;
+    await ddata.save();
 
     const laws = {
-        maintenance:ddata.maintenance,
-        live:ddata.live,
-        youcent:ddata.youcent,
-        tveri:ddata.tveri,
-        timeout:ddata.timeout
+      maintenance: ddata.maintenance,
+      live: ddata.live,
+      youcent: ddata.youcent,
+      tveri: ddata.tveri,
+      timeout: ddata.timeout,
+    };
 
-      }
-
-
-    res.json({ laws ,success:true});
+    res.json({ laws, success: true });
   },
   db: async (req, res) => {
-    console.log("fetching jdb data");
-    const allusers = await User.countDocuments()
-    const courses = await Course.countDocuments()
-    const categories = await Category.countDocuments()
-    const boughtcourses = await Course.countDocuments({bought:true})
-    const teachers = await User.countDocuments({isTeacher:true})
-    const mandystudents = await User.countDocuments({isStudent:true,smandy:mandy()})
-    const todaystudents = await User.countDocuments({isStudent:true,sdmy:dmy()})
-    const trans = await Transact.find()
-    const transactions = await Transact.find().sort({ordstring:-1})
-    const ddata = await Data.findOne({isdata:true})
-    const revenue = money(sumByKey(trans,"amount"))
-    const profit = money(sumByKey(trans,"profit"))
+    console.log('fetching jdb data');
+    const user = req.user;
+    const allusers = await User.countDocuments();
+    const courses = await Course.countDocuments();
+    const categories = await Category.countDocuments();
+    const boughtcourses = await Course.countDocuments({ bought: true });
+    const mycourses = await Mycourse.countDocuments();
+    const teachers = await User.countDocuments({ isTeacher: true });
+    const mandystudents = await User.countDocuments({
+      isStudent: true,
+      smandy: mandy(),
+    });
+    const todaystudents = await User.countDocuments({
+      isStudent: true,
+      sdmy: dmy(),
+    });
+    const trans = await Transact.find();
+    const ddata = await Data.findOne({ isdata: true });
+
+    const balance = ddata.absolute;
+    // const balance = user.host ?await getAccountBalance() : ddata.absolute
+    const transactions = await Transact.find().sort({ ordstring: -1 });
+    const revenue = money(sumByKey(trans, 'amount'));
+    const profit = money(sumByKey(trans, 'profit'));
+    ddata.absolute = balance;
+    await ddata.save();
 
     const laws = {
-        maintenance:ddata.maintenance,
-        live:ddata.plive,
-        youcent:ddata.youcent,
-        timeout:ddata.timeout,
-        tveri:ddata.tveri
-
-      }
+      maintenance: ddata.maintenance,
+      live: ddata.plive,
+      youcent: ddata.youcent,
+      timeout: ddata.timeout,
+      tveri: ddata.tveri,
+    };
 
     const data = {
-        allusers,boughtcourses,
-        teachers,laws,
-        lastteachersignup:ddata.lastteachersignup,
-        laststudentsignuptime:ddata.laststudentsignuptime,
-        lastteachersignuptime:ddata.lastteachersignuptime,
-        laststudentsignup:ddata.laststudentsignup,
-        mandystudents,todaystudents,categories,revenue,profit,courses,
-        youcent:ddata.youcent+"%"
-    }
+      allusers,
+      boughtcourses,
+      teachers,
+      laws,
+      lastteachersignup: ddata.lastteachersignup,
+      laststudentsignuptime: ddata.laststudentsignuptime,
+      lastteachersignuptime: ddata.lastteachersignuptime,
+      laststudentsignup: ddata.laststudentsignup,
+      mandystudents,
+      todaystudents,
+      categories,
+      revenue,
+      profit,
+      courses,
+      youcent: ddata.youcent + '%',
+      absolute: balance,
+      boughtcourses,
+      mycourses,
+      dadminprofit: ddata.dadminprofit,
+    };
 
-   
     console.table(laws);
 
-    res.json({ data,transactions,laws ,success:true});
+    res.json({ data, transactions, laws, success: true });
   },
-  
-  
+
   deploy: async (req, res) => {
     let { cid } = req.params;
     const course = await Course.findOne({ cid });
@@ -3172,18 +3288,18 @@ module.exports = {
     if (course) {
       const user = req.user;
 
-      const ress = course.deployed ? "undeployed" : "deployed";
-      console.log("about to deploy " + user.name);
+      const ress = course.deployed ? 'undeployed' : 'deployed';
+      console.log('about to deploy ' + user.name);
       // const user = await User.findOne({ userid });
 
       const nname = course.name;
 
       const whichadmin = user;
-      const slave = "youstack";
+      const slave = 'youstack';
       const when = currentDate();
 
-      const actionid = "act" + getserialnum(100000);
-      const opid = "op" + getserialnum(100000);
+      const actionid = 'act' + getserialnum(100000);
+      const opid = 'op' + getserialnum(100000);
       const story = `${capitalise(whichadmin.name)} ${ress} ${capitalise(
         nname
       )}  course on youstack `;
@@ -3195,8 +3311,8 @@ module.exports = {
       await Action.create({
         master: whichadmin.name,
         masterid: whichadmin.userid,
-        slave: "youstack",
-        slaveid: "youstack",
+        slave: 'youstack',
+        slaveid: 'youstack',
         actionid,
         serious: true,
         opid,
@@ -3204,21 +3320,22 @@ module.exports = {
         dmy: mandy(),
         when,
         masterfirstemail: whichadmin.firstemail,
-        slavefirstemail: "youstack",
+        slavefirstemail: 'youstack',
         slavestory,
         story,
         masterstory,
         mastertype: whichadmin.type,
-        slavetype: "system",
+        slavetype: 'system',
         masterimage: whichadmin.image,
-        slaveimage: "youstack",
+        slaveimage: 'youstack',
         ordstring: new Date(),
         ifhost: whichadmin.host ? true : false,
-        actiontype: "admin to youstack",
+        actiontype: 'admin to youstack',
       });
       lic();
       // work(req.user.userid);
       course.deployed = !course.deployed;
+      course.locked = course.deployed ? false : true;
       await course.save();
       // const course = await Course.findOne({cid})
       res.json({
@@ -3226,9 +3343,628 @@ module.exports = {
         success: true,
       });
     } else {
-      const courses = await Course.find().sort({ name: "asc" });
+      const courses = await Course.find().sort({ name: 'asc' });
 
-      res.json({ success: true,error: true, });
+      res.json({ success: true, error: true });
+    }
+  },
+  verifyteacher: async (req, res) => {
+    let { userid } = req.params;
+    const cl = await User.findOne({ userid });
+    const user = req.user;
+
+    // const ifcos = await Course.findOne({name})
+    if (cl) {
+      const ress = cl.verified ? 'unverified' : 'verified';
+      console.log('about to verify ' + user.name);
+      // const user = await User.findOne({ userid });
+
+      const nname = cl.name;
+
+      const whichadmin = user;
+      const slave = cl.name;
+      const when = currentDate();
+
+      const actionid = 'act' + getserialnum(100000);
+      const opid = 'op' + getserialnum(100000);
+      const story = `${capitalise(whichadmin.name)} ${ress} ${capitalise(
+        nname
+      )}  (tutor) on youstack `;
+      const slavestory = `${capitalise(nname)} was ${ress} by  ${capitalise(
+        whichadmin.name
+      )} `;
+      const masterstory = `I ${ress} a tutor called ${capitalise(nname)}'s `;
+
+      await Action.create({
+        master: whichadmin.name,
+        masterid: whichadmin.userid,
+        slave: cl.name,
+        slaveid: userid,
+        actionid,
+        serious: true,
+        opid,
+        mandy: mandy(),
+        dmy: mandy(),
+        when,
+        masterfirstemail: whichadmin.firstemail,
+        slavefirstemail: cl.firstemail,
+        slavestory,
+        story,
+        masterstory,
+        mastertype: whichadmin.type,
+        slavetype: 'tutor',
+        masterimage: whichadmin.image,
+        slaveimage: cl.image,
+        ordstring: new Date(),
+        ifhost: whichadmin.host ? true : false,
+        actiontype: 'admin to tutor',
+      });
+      lic();
+      // work(req.user.userid);
+      cl.verified = !cl.verified;
+      cl.vpending = false;
+      await cl.save();
+      // const course = await Course.findOne({cid})
+      res.json({
+        cl,
+        success: true,
+      });
+    } else {
+      res.json({ success: true, error: true });
+    }
+  },
+  newcategory: async (req, res) => {
+    try {
+      let { name, page, limit, desc } = req.body;
+      name=capitalise(name)
+      limit = Number(limit);
+      page = Number(page);
+      console.log(page, limit, desc, name);
+      if (!req.files || !req.files.image) {
+        console.log("No image file uploaded")
+        return res
+          .status(400)
+          .json({ success: false, error: 'No image file uploaded' });
+      }
+
+      const user = req.user;
+
+      let ress = ` created a new category by the name ${name}`
+
+      const image = req.files.image;
+      const uploadDir = path.join(__dirname, '..', 'public', 'categories');
+
+    
+      const newImageName = `${`from`}-${name.substring(0,4)}.${image.name.split('.')[1]}`;
+      const newImagePath = path.join(uploadDir, newImageName);
+ 
+      const filename = newImageName
+
+
+     
+      fs.writeFileSync(newImagePath, image.data);
+
+      // Update category image URL
+      const imageUrl = `${process.env.api}categories/${newImageName}`;
+      const catid = "nc"+ getserialnum(100000)
+
+      await Category.create({
+        category:name,
+        dateadded: currentDate(),
+        name: name,
+        catid: catid,
+        ccid: getserialnum(100000),
+        desc: desc,
+        ordstring: new Date(),
+        createdby: user.email,
+        image:imageUrl,
+     
+      })
+    
+
+      const actionid = 'act' + getserialnum(100000);
+      const opid = 'op' + getserialnum(100000);
+      const when = currentDate();
+      const story = `${capitalise(user.name)} ${ress} on YouStack`;
+      let actionstory = `${
+        user.name
+      } ${ress} ,this was done on ${currentDate()}`;
+
+      // Append new action story properly
+      let useractions =
+        user.useractions.length > 6
+          ? user.useractions + '%%' + actionstory
+          : actionstory;
+
+      // Split into array
+      let actionsarray = useractions.split('%%');
+
+      // Keep only the latest 10 actions
+      if (actionsarray.length > 50) {
+        actionsarray = actionsarray.slice(actionsarray.length - 50);
+      }
+
+      // Reconstruct `useractions`
+      useractions = actionsarray.join('%%');
+
+      user.useractions = useractions;
+      await user.save();
+      const slavestory = `${capitalise(name)} was ${ress} by ${capitalise(
+        user.name
+      )}`;
+      const masterstory = `I ${ress} for category ${capitalise(name)}`;
+
+      await Action.create({
+        master: user.name,
+        masterid: user.userid,
+        slave: name,
+        slaveid: catid,
+        actionid,
+        serious: true,
+        opid,
+        mandy: mandy(),
+        dmy: mandy(),
+        when,
+        masterfirstemail: user.firstemail,
+        slavefirstemail: name,
+        slavestory,
+        story,
+        masterstory,
+        mastertype: user.type,
+        slavetype: 'category',
+        masterimage: user.image,
+        slaveimage: imageUrl,
+        ordstring: new Date(),
+        ifhost:user.host,
+        actiontype: 'admin to category',
+      });
+
+      // Pagination
+      page = parseInt(page) || 1;
+      limit = parseInt(limit) || 5;
+      const skip = (page - 1) * limit;
+
+      let courses = [];
+      let catsort = req.user.catsort;
+
+      if (catsort === 'asc') {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ name: 'asc' });
+      } else if (catsort === 'desc') {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ name: -1 });
+      } else if (catsort === 'newest') {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ ordstring: -1 });
+      } else if (catsort === 'students') {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ students: -1 });
+      } else {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ ordstring: 1 });
+      }
+
+      const count = await Category.countDocuments();
+
+      res.json({
+        success: true,
+        totalPages: Math.ceil(count / limit),
+        currentPage: Number(page),
+        user: req.user,
+        courses,
+        count,
+      });
+    } catch (error) {
+      console.error('Error updating category:', error);
+      res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+  },
+  updatecategory: async (req, res) => {
+    try {
+      let { catid, treat, page, limit, desc, name } = req.body;
+      limit = Number(limit);
+      page = Number(page);
+      console.log(catid, treat, page, limit, desc, name);
+
+      const user = req.user;
+      const cl = await Category.findOne({ catid });
+      let ress;
+
+      if (treat === 'image') {
+        if (!cl)
+          return res
+            .status(404)
+            .json({ success: false, message: 'Category not found' });
+
+        if (!req.files || !req.files.image) {
+          return res
+            .status(400)
+            .json({ success: false, error: 'No image file uploaded' });
+        }
+
+        const image = req.files.image;
+        const uploadDir = path.join(__dirname, '..', 'public', 'categories');
+
+        // Ensure the upload directory exists
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        const newImageName = `${`from`}-${cl.name}.${image.name.split('.')[1]}`;
+        const newImagePath = path.join(uploadDir, newImageName);
+        const nnamer = cl.image.split('/');
+        const filename = nnamer[nnamer.length - 1];
+        console.log(filename + ' is cl imag');
+
+        const tempFilePath = path.join(
+          __dirname,
+          '..',
+          'public',
+          'categories',
+          filename
+        );
+        try {
+          fs.unlink(tempFilePath, (err) => {
+            if (err) console.error('Failed to delete temp file:', err);
+          });
+        } catch (error) {
+          console.log("couldn't delete previous image");
+        }
+
+        fs.writeFileSync(newImagePath, image.data);
+
+        // Update category image URL
+        const imageUrl = `${process.env.api}categories/${newImageName}`;
+        cl.image = imageUrl;
+        await cl.save();
+        ress = `updated category image of ${cl.name}`;
+      } else {
+        const mcs = await Mycourse.find({ catid });
+        const cs = await Course.find({ catid });
+        if (mcs && mcs.length > 0) {
+          for (let i = 0; i < mcs.length; i++) {
+            const cc = mcs[i];
+            cc.category = name;
+            await cc.save();
+          }
+        }
+        if (cs && cs.length > 0) {
+          for (let i = 0; i < cs.length; i++) {
+            const cc = cs[i];
+            cc.category = name;
+            await cc.save();
+          }
+        }
+        console.log(name, desc + ' trying to name desc');
+        cl.name = name.trim();
+        cl.desc = desc.trim();
+        await cl.save();
+
+        ress = `updated category name/description of ${cl.name}`;
+      }
+
+      const actionid = 'act' + getserialnum(100000);
+      const opid = 'op' + getserialnum(100000);
+      const when = currentDate();
+      const story = `${capitalise(user.name)} ${ress} on YouStack`;
+      let actionstory = `${
+        user.name
+      } ${ress} ,this was done on ${currentDate()}`;
+
+      // Append new action story properly
+      let useractions =
+        user.useractions.length > 6
+          ? user.useractions + '%%' + actionstory
+          : actionstory;
+
+      // Split into array
+      let actionsarray = useractions.split('%%');
+
+      // Keep only the latest 10 actions
+      if (actionsarray.length > 50) {
+        actionsarray = actionsarray.slice(actionsarray.length - 50);
+      }
+
+      // Reconstruct `useractions`
+      useractions = actionsarray.join('%%');
+
+      user.useractions = useractions;
+      await user.save();
+      const slavestory = `${capitalise(cl.name)} was ${ress} by ${capitalise(
+        user.name
+      )}`;
+      const masterstory = `I ${ress} for category ${capitalise(cl.name)}`;
+
+      await Action.create({
+        master: user.name,
+        masterid: user.userid,
+        slave: cl.name,
+        slaveid: cl.catid,
+        actionid,
+        serious: true,
+        opid,
+        mandy: mandy(),
+        dmy: mandy(),
+        when,
+        masterfirstemail: user.firstemail,
+        slavefirstemail: cl.name,
+        slavestory,
+        story,
+        masterstory,
+        mastertype: user.type,
+        slavetype: 'category',
+        masterimage: user.image,
+        slaveimage: cl.image,
+        ordstring: new Date(),
+        ifhost: !!user.host,
+        actiontype: 'admin to category',
+      });
+
+      // Pagination
+      page = parseInt(page) || 1;
+      limit = parseInt(limit) || 5;
+      const skip = (page - 1) * limit;
+
+      let courses = [];
+      let catsort = req.user.catsort;
+
+      if (catsort === 'asc') {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ name: 'asc' });
+      } else if (catsort === 'desc') {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ name: -1 });
+      } else if (catsort === 'newest') {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ ordstring: -1 });
+      } else if (catsort === 'students') {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ students: -1 });
+      } else {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ ordstring: 1 });
+      }
+
+      const count = await Category.countDocuments();
+
+      res.json({
+        success: true,
+        totalPages: Math.ceil(count / limit),
+        currentPage: Number(page),
+        user: req.user,
+        courses,
+        count,
+      });
+    } catch (error) {
+      console.error('Error updating category:', error);
+      res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+  },
+  deletecategory: async (req, res) => {
+    try {
+      let { catid,limit ,page } = req.query
+      limit = Number(limit);
+      page = Number(page);
+      console.log(catid);
+      const cat = await Category.findOne({catid})
+
+      const user = req.user;
+      const cl =cat
+  
+      let ress =  ` deleted category ${cat.name}`
+      const nnamer = cat.image.split('/');
+      const filename = nnamer[nnamer.length - 1];
+      console.log(filename + ' is cat imag');
+
+      const tempFilePath = path.join(
+        __dirname,
+        '..',
+        'public',
+        'categories',
+        filename
+      );
+      try {
+        fs.unlink(tempFilePath, (err) => {
+          if (err) console.error('Failed to delete temp file:', err);
+        });
+      } catch (error) {
+        console.log("couldn't delete previous image");
+      }
+
+
+    
+
+      const actionid = 'act' + getserialnum(100000);
+      const opid = 'op' + getserialnum(100000);
+      const when = currentDate();
+      const story = `${capitalise(user.name)} ${ress} on YouStack`;
+      let actionstory = `${
+        user.name
+      } ${ress} ,this was done on ${currentDate()}`;
+
+      // Append new action story properly
+      let useractions =
+        user.useractions.length > 6
+          ? user.useractions + '%%' + actionstory
+          : actionstory;
+
+      // Split into array
+      let actionsarray = useractions.split('%%');
+
+      // Keep only the latest 10 actions
+      if (actionsarray.length > 50) {
+        actionsarray = actionsarray.slice(actionsarray.length - 50);
+      }
+
+      // Reconstruct `useractions`
+      useractions = actionsarray.join('%%');
+
+      user.useractions = useractions;
+      await user.save();
+      const slavestory = `${capitalise(cat.name)} was ${ress} by ${capitalise(user.name)}`;
+      const masterstory = `I ${ress} for category ${capitalise(cat.name)}`;
+
+      await Action.create({
+        master: user.name,
+        masterid: user.userid,
+        slave: cl.name,
+        slaveid: cl.catid,
+        actionid,
+        serious: true,
+        opid,
+        mandy: mandy(),
+        dmy: mandy(),
+        when,
+        masterfirstemail: user.firstemail,
+        slavefirstemail: cl.name,
+        slavestory,
+        story,
+        masterstory,
+        mastertype: user.type,
+        slavetype: 'category',
+        masterimage: user.image,
+        slaveimage: cl.image,
+        ordstring: new Date(),
+        ifhost: !!user.host,
+        actiontype: 'admin to category',
+      });
+      await Category.deleteOne({catid})
+
+
+      // Pagination
+      page = parseInt(page) || 1;
+      limit = parseInt(limit) || 5;
+      const skip = (page - 1) * limit;
+
+      let courses = [];
+      let catsort = req.user.catsort;
+
+      if (catsort === 'asc') {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ name: 'asc' });
+      } else if (catsort === 'desc') {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ name: -1 });
+      } else if (catsort === 'newest') {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ ordstring: -1 });
+      } else if (catsort === 'students') {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ students: -1 });
+      } else {
+        courses = await Category.find()
+          .skip(skip)
+          .limit(limit)
+          .sort({ ordstring: 1 });
+      }
+
+      const count = await Category.countDocuments();
+
+      res.json({
+        success: true,
+        totalPages: Math.ceil(count / limit),
+        currentPage: Number(page),
+        user: req.user,
+        courses,
+        count,
+      });
+    } catch (error) {
+      console.error('Error updating category:', error);
+      res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+  },
+
+ 
+  licenseteacher: async (req, res) => {
+    let { userid } = req.params;
+    const cl = await User.findOne({ userid });
+    const user = req.user;
+
+    // const ifcos = await Course.findOne({name})
+    if (cl) {
+      const ress = cl.verified ? 'unlicensed' : 'licensed';
+      console.log('about to license ' + user.name);
+      // const user = await User.findOne({ userid });
+
+      const nname = cl.name;
+
+      const whichadmin = user;
+      const slave = cl.name;
+      const when = currentDate();
+
+      const actionid = 'act' + getserialnum(100000);
+      const opid = 'op' + getserialnum(100000);
+      const story = `${capitalise(whichadmin.name)} ${ress} ${capitalise(
+        nname
+      )}  (tutor) on youstack `;
+      const slavestory = `${capitalise(nname)} was ${ress} by  ${capitalise(
+        whichadmin.name
+      )} `;
+      const masterstory = `I ${ress} a tutor called ${capitalise(nname)}'s `;
+
+      await Action.create({
+        master: whichadmin.name,
+        masterid: whichadmin.userid,
+        slave: cl.name,
+        slaveid: userid,
+        actionid,
+        serious: true,
+        opid,
+        mandy: mandy(),
+        dmy: mandy(),
+        when,
+        masterfirstemail: whichadmin.firstemail,
+        slavefirstemail: cl.firstemail,
+        slavestory,
+        story,
+        masterstory,
+        mastertype: whichadmin.type,
+        slavetype: 'tutor',
+        masterimage: whichadmin.image,
+        slaveimage: cl.image,
+        ordstring: new Date(),
+        ifhost: whichadmin.host ? true : false,
+        actiontype: 'admin to tutor',
+      });
+      lic();
+      // work(req.user.userid);
+      cl.licensed = !cl.licensed;
+
+      await cl.save();
+      // const course = await Course.findOne({cid})
+      res.json({
+        cl,
+        success: true,
+      });
+    } else {
+      res.json({ success: true, error: true });
     }
   },
   delcourse: async (req, res) => {
@@ -3238,25 +3974,25 @@ module.exports = {
 
       if (!course) {
         // If the course doesn't exist
-        const courses = await Course.find().sort({ name: "asc" });
+        const courses = await Course.find().sort({ name: 'asc' });
         return res.json({ success: true, alreadydeleted: true, courses });
       }
 
-      console.log("Course to delete: ", JSON.stringify(course));
+      console.log('Course to delete: ', JSON.stringify(course));
 
       const user = req.user;
       if (!user || !user.name || !user.userid) {
-        throw new Error("User information is missing");
+        throw new Error('User information is missing');
       }
-      console.log("User: ", JSON.stringify(user));
+      console.log('User: ', JSON.stringify(user));
 
       const tea = await User.findOne({ userid: course.tid });
       const nname = course.name;
       const whichadmin = user;
-      const slave = "youstack";
+      const slave = 'youstack';
       const when = currentDate();
-      const actionid = "act" + getserialnum(100000);
-      const opid = "op" + getserialnum(100000);
+      const actionid = 'act' + getserialnum(100000);
+      const opid = 'op' + getserialnum(100000);
       const story = `${capitalise(whichadmin.name)} deleted ${capitalise(
         nname
       )} course from youstack`;
@@ -3277,17 +4013,17 @@ module.exports = {
         dmy: mandy(),
         when,
         masterfirstemail: whichadmin.firstemail,
-        slavefirstemail: "youstack",
+        slavefirstemail: 'youstack',
         slavestory,
         story,
         masterstory,
         mastertype: whichadmin.type,
-        slavetype: "system",
+        slavetype: 'system',
         masterimage: whichadmin.image,
         slaveimage: slave,
         ordstring: new Date(),
         ifhost: whichadmin.host ? true : false,
-        actiontype: "admin to youstack",
+        actiontype: 'admin to youstack',
       });
 
       lic();
@@ -3298,20 +4034,21 @@ module.exports = {
       work(req.user.userid);
 
       wdd();
-      const courses = await Course.find().sort({ name: "asc" });
+      const courses = await Course.find().sort({ name: 'asc' });
       res.json({
         courses,
         success: true,
       });
     } catch (error) {
-      console.error("Error deleting course: ", error.message);
+      console.error('Error deleting course: ', error.message);
       res.status(500).json({ success: false, message: error.message });
     }
   },
 
-  admingetcourses: async (req, res) => {
+  gettrans: async (req, res) => {
     // Get page and limit from query params with default values
     const page = parseInt(req.query.page) || 1;
+
     const limit = parseInt(req.query.limit) || 10;
 
     // Calculate the number of documents to skip
@@ -3319,14 +4056,14 @@ module.exports = {
 
     let trans = [];
     let transort = req.user.coursesort;
-    if (transort == "asc") {
+    if (transort == 'asc') {
       trans = await Transact.find()
         .skip(skip)
         .limit(limit)
-        .sort({ name: "asc" });
-    } else if (transort == "desc") {
+        .sort({ name: 'asc' });
+    } else if (transort == 'desc') {
       trans = await Transact.find().skip(skip).limit(limit).sort({ name: -1 });
-    } else if (transort == "newest") {
+    } else if (transort == 'newest') {
       trans = await Transact.find()
         .skip(skip)
         .limit(limit)
@@ -3337,12 +4074,162 @@ module.exports = {
         .limit(limit)
         .sort({ ordstring: 1 });
     }
-    console.log(page + "_" + limit + " is page and limit");
+    console.log(page + '_' + limit + ' is page and limit');
 
     const count = await Transact.countDocuments();
     // console.log(trans.lemgth + " is trans length");
 
-    const sum = money(sume(trans, "amount"));
+    const sum = money(sume(trans, 'amount'));
+
+    res.json({
+      success: true,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+      inflow: trans,
+      sum,
+    });
+  },
+  getstudenttrans: async (req, res) => {
+    // Get page and limit from query params with default values
+    const page = parseInt(req.query.page) || 1;
+    const clid = req.query.studentid;
+    const studentid = req.query.studentid;
+    console.log(studentid + ' is teacher id');
+    const limit = parseInt(req.query.limit) || 10;
+
+    // Calculate the number of documents to skip
+    const skip = (page - 1) * limit;
+
+    let trans = [];
+    let transort = req.user.coursesort;
+    if (transort == 'asc') {
+      trans = await Teatransact.find({ studentid })
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: 'asc' });
+    } else if (transort == 'desc') {
+      trans = await Teatransact.find({ studentid })
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: -1 });
+    } else if (transort == 'newest') {
+      trans = await Teatransact.find({ studentid })
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: -1 });
+    } else {
+      trans = await Teatransact.find({ studentid })
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: 1 });
+    }
+    const cl = await User.findOne({ userid: clid });
+    console.log(page + '_' + limit + ' is page and limit');
+
+    const count = await Teatransact.countDocuments({ studentid });
+    const courses = await Mycourse.find({ userid: studentid });
+    console.log(cl + ' is cl length ' + clid);
+
+    const sum = money(sume(trans, 'amount'));
+
+    res.json({
+      success: true,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+      inflow: trans,
+      courses,
+      sum,
+      cl,
+    });
+  },
+  getteachertrans: async (req, res) => {
+    // Get page and limit from query params with default values
+    const page = parseInt(req.query.page) || 1;
+    const clid = req.query.teacherid;
+    const cl = await User.findOne({ userid: clid });
+
+    const teacherid = req.query.teacherid;
+    console.log(teacherid + ' is teacher id');
+    const limit = parseInt(req.query.limit) || 10;
+
+    // Calculate the number of documents to skip
+    const skip = (page - 1) * limit;
+
+    let trans = [];
+    let transort = req.user.coursesort;
+    if (transort == 'asc') {
+      trans = await Teatransact.find({ teacherid })
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: 'asc' });
+    } else if (transort == 'desc') {
+      trans = await Teatransact.find({ teacherid })
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: -1 });
+    } else if (transort == 'newest') {
+      trans = await Teatransact.find({ teacherid })
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: -1 });
+    } else {
+      trans = await Teatransact.find({ teacherid })
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: 1 });
+    }
+    console.log(page + '_' + limit + ' is page and limit');
+
+    const count = await Teatransact.countDocuments({ teacherid });
+    const courses = await Course.find({ teacherid });
+    // console.log(trans.lemgth + " is trans length");
+
+    const sum = money(sume(trans, 'amount'));
+
+    res.json({
+      success: true,
+      cl,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+      inflow: trans,
+      courses,
+      sum,
+    });
+  },
+  admingetcourses: async (req, res) => {
+    // Get page and limit from query params with default values
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    // Calculate the number of documents to skip
+    const skip = (page - 1) * limit;
+
+    let trans = [];
+    let transort = req.user.coursesort;
+    if (transort == 'asc') {
+      trans = await Transact.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ name: 'asc' });
+    } else if (transort == 'desc') {
+      trans = await Transact.find().skip(skip).limit(limit).sort({ name: -1 });
+    } else if (transort == 'newest') {
+      trans = await Transact.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: -1 });
+    } else {
+      trans = await Transact.find()
+        .skip(skip)
+        .limit(limit)
+        .sort({ ordstring: 1 });
+    }
+    console.log(page + '_' + limit + ' is page and limit');
+
+    const count = await Transact.countDocuments();
+    // console.log(trans.lemgth + " is trans length");
+
+    const sum = money(sume(trans, 'amount'));
 
     res.json({
       success: true,
@@ -3354,8 +4241,10 @@ module.exports = {
   },
   getactions: async (req, res) => {
     const actions = updateStories(await Action.find().sort({ ordstring: -1 }));
-    const bactions = updateStories(await Actionb.find().sort({ ordstring: -1 }));
-    console.log(actions.length + " getting actionss");
+    const bactions = updateStories(
+      await Actionb.find().sort({ ordstring: -1 })
+    );
+    console.log(actions.length + ' getting actionss');
 
     res.json({
       actions,
@@ -3381,6 +4270,61 @@ module.exports = {
       res.json({ error: true, courses });
     }
   },
+  search: async (req, res) => {
+    console.table('searching courses detected at ' + currentDate());
+    let { name, page, limit, search } = req.query;
 
-  
+    console.log(name, page, limit, search);
+
+    const skip = (page - 1) * limit;
+    let count;
+    let courses;
+
+    if (search == 'courses') {
+      count = await Course.countDocuments({ name: new RegExp(name, 'i') });
+
+      courses = await Course.find({ name: new RegExp(name, 'i') })
+        .skip(skip)
+        .limit(12)
+        .sort({ name: -1 });
+    } else if (search == 'transactions') {
+      count = await Transact.countDocuments({ name: new RegExp(name, 'i') });
+      courses = await Transact.find({ name: new RegExp(name, 'i') })
+        .skip(skip)
+        .limit(12)
+        .sort({ name: -1 });
+    } else if (search == 'students') {
+      count = await User.countDocuments({
+        isStudent: true,
+        name: new RegExp(name, 'i'),
+      });
+      courses = await User.find({
+        isStudent: true,
+        name: new RegExp(name, 'i'),
+      })
+        .skip(skip)
+        .limit(12)
+        .sort({ name: -1 });
+    } else {
+      count = await User.countDocuments({
+        isTeacher: true,
+        name: new RegExp(name, 'i'),
+      });
+      courses = await User.find({
+        isTeacher: true,
+        name: new RegExp(name, 'i'),
+      })
+        .skip(skip)
+        .limit(12)
+        .sort({ name: -1 });
+    }
+
+    res.json({
+      success: true,
+      courses,
+      totalPages: Math.ceil(count / limit), // Calculate total pages based on count and limit
+      currentPage: Number(page),
+      sum: count,
+    });
+  },
 };

@@ -15,10 +15,20 @@ router.get("/togglemant", adminvalid, adminController.togglemant);
 router.get("/updatetveri", adminvalid, adminController.updatetveri);
 router.get("/getcourses", adminvalid, adminController.getcourses);
 router.get("/getteachers", adminvalid, adminController.getteachers);
+router.get("/getstudents", adminvalid, adminController.getstudents);
+router.get("/gettrans", adminvalid, adminController.gettrans);
 router.get("/getcategories", adminvalid, adminController.getcategories);
 router.get("/updateyoucent", adminvalid, adminController.updateyoucent);
+router.get("/getteachertrans", adminvalid, adminController.getteachertrans);
+router.get("/getstudenttrans", adminvalid, adminController.getstudenttrans);
+router.get("/verifyteacher/:userid", adminvalid, adminController.verifyteacher);
+router.get("/licenseteacher/:userid", adminvalid, adminController.licenseteacher);
+router.get("/deletecategory", adminvalid, adminController.deletecategory);
 router.get("/getactions", adminvalid, adminController.getactions);
 router.get("/updatetimeout", adminvalid, adminController.updatetimeout);
+router.get("/search", adminvalid, adminController.search);
+router.post("/updatecategory", adminvalid, adminController.updatecategory);
+router.post("/newcategory", adminvalid, adminController.newcategory);
 
 
 module.exports = router;

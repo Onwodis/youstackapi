@@ -137,9 +137,28 @@ const  teacherValid = async (req, res, next) => {
   const obi = req.headers.apikey;
   const userid = req.headers.userid;
   if (obi == process.env.obi) {
-    console.log(userid + " is useridh @ " + new Date().toLocaleTimeString());
+    console.log(userid + " is userid teach @ " + new Date().toLocaleTimeString());
     const user = await User.findOne({userid,isTeacher:true})
     if(user){
+      req.user = user
+      next();
+    }
+    else{
+      res.json({ error: true });
+
+    }
+  } else {
+    res.json({ error: true });
+  }
+};
+const  studValid = async (req, res, next) => {
+  const obi = req.headers.apikey;
+  const userid = req.headers.userid;
+  if (obi == process.env.obi) {
+    console.log(userid + " is userid teach @ " + new Date().toLocaleTimeString());
+    const user = await User.findOne({userid,isStudent:true})
+    if(user){
+      user.lastseen = currentDate()
       req.user = user
       next();
     }
@@ -154,6 +173,6 @@ const  teacherValid = async (req, res, next) => {
 
 
 module.exports = {
-  valid,greet,adminvalid, teacherValid
+  valid,greet,adminvalid, teacherValid,studValid
   
 };

@@ -14,7 +14,7 @@ const courseSchema = new mongoose.Schema({
   name: String,
   batches:{type:Number,default:0},
   category:String,
-  catid: String,
+  catid: String,mandy :String,
   ccid:Number,
   students:{type:Number,default:0},
   topics:{type:Number,default:0},
@@ -25,7 +25,7 @@ const courseSchema = new mongoose.Schema({
   intro: String,
   introlink: String,
   introid: {type:String,default:process.env.videoid},
-  
+  bought:Boolean,
   teacher: String,
   teacherid: String,
   profit:{type:Number,default:0},

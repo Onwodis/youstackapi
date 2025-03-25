@@ -5,6 +5,7 @@ const categorySchema = new mongoose.Schema({
   category: String,
   sn: Number,
   ccid: Number,
+  boughtcourses:{type: Number,default:0},
   manager: String,
   catid: String,
   createdby: String,

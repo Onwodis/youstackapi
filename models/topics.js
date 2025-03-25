@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Data = require("./data")
 const freeVideoLinks = [
   "https://www.w3schools.com/html/mov_bbb.mp4",
   "https://www.w3schools.com/html/movie.mp4",
@@ -14,6 +15,11 @@ const getlink =()=>{
   return freeVideoLinks[getran()]
 
 }
+const Getd = async ()=>{
+  const ddata = await Data.findOne({isdata:true})
+  return ddata.videoid
+}
+
 console.log(getlink() + "  is free random video link")
 const topicSchema = new mongoose.Schema({
   allstudents: Number,
@@ -21,7 +27,8 @@ const topicSchema = new mongoose.Schema({
   cname: String,
 
   cid: String,
-  videoid: {type:String,default:process.env.videoid},
+  videoid: {type:String,default:Getd()},
+  updated: {type:String,default:"nil"},
   tid: String,
   topid: String,
   title: String,

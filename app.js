@@ -61,10 +61,12 @@ io.on("connection", (socket) => {
 const mainRoutes = require("./routes/mainRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const tutorRoutes = require("./routes/tutorRoutes");
+const studRoutes = require("./routes/studentRoutes");
 
 app.use("/", mainRoutes);
 app.use("/admin", adminRoutes);
 app.use("/tutor", tutorRoutes);
+app.use("/stud", studRoutes);
 
 // ✅ Corrected MongoDB Connection
 mongoose

@@ -7,6 +7,7 @@ const transactionSchema = new mongoose.Schema({
   },
 
   name: String,
+ 
   cname: String,
   cid: String,
   email: String,
@@ -15,6 +16,7 @@ const transactionSchema = new mongoose.Schema({
   deposit: Boolean,
   withdrawal: Boolean,
   finaltotal: Number,
+  courses: Number,
   initialtotal: Number,
   amount: Number,
   damount: String,
@@ -34,6 +36,8 @@ const transactionSchema = new mongoose.Schema({
   updatebyfirstemail: String,
   oldamount: Number,
   doldamount: String,
+  aprofit: Number,
+  tprofit: Number,
   amount: Number,
   damount: String,
   updatetimupdatetimes: Number,
@@ -41,6 +45,9 @@ const transactionSchema = new mongoose.Schema({
   firstpayment: Boolean,
   moved: Boolean,
   movequery: String,
+  ip: String,
+  youcent:String,
+
   approvedby: String,
   former: Boolean,
   formername: String,

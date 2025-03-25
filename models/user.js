@@ -1,5 +1,13 @@
 const mongoose = require('mongoose')
+function money(amount) {
+  var moneyFormat = Number(amount).toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'NGN',
+  });
+  const dr = '₦' + moneyFormat.split('NGN')[1];
 
+  return dr;
+}
 const userSchema = new mongoose.Schema({
   firstName: String,
   lastName: String,
@@ -16,16 +24,23 @@ const userSchema = new mongoose.Schema({
   dmininstallment: String,
   fromsales: Boolean,
   fromid: String,
+  biz: String,
+  firsttransid: String,
+  firstcids: String,
   from: String,
   fromadmin: Boolean,
   fromself: Boolean,
+  spent: {type:Number,default:0},
+  dspent: {type:String,default:money(0)},
   cgpa: {type:Number,default:0},
+  withdrawn: {type:Number,default:0},
+  dwithdrawn: {type:String,default:money(0)},
   rating: Number,
+  matno :String,
   progress: Number,
   test: Number,
-  exam: Number,
-  cgpa: Number,
-  fouls: Number,
+  exam: Number,tempcode:String,
+
   batchname: String,
   cname: String,
   cid: String,
@@ -73,6 +88,9 @@ const userSchema = new mongoose.Schema({
   regdate: String,
   profit: Number,
   dprofit: String,
+  initials: String,
+  profit_mandy:String,
+  dprofit_mandy: String,
   username: String,
   lmonths: Number,
   humanexpiry: String,
@@ -80,6 +98,7 @@ const userSchema = new mongoose.Schema({
   paytime: String,
   logindmy: String,
   logindmytimes: Number,
+  bcourses: {type:Number,default:0},
 
   mode: String,
   regmonthandyear: String,
@@ -301,12 +320,13 @@ const userSchema = new mongoose.Schema({
   ifowe: Boolean,
   dobpassed: Boolean,
   allowcc: Boolean,
-  moved: Boolean,
+
   formerbatch: String,
   lastmovedby: String,
   lastmovedate: String,
   movequery: String,
   moved: Boolean,
+  vpending: Boolean,
   edited: Boolean,
   restricted: Boolean,
   editquery: String,
@@ -359,6 +379,10 @@ const userSchema = new mongoose.Schema({
   sales: String,
   salesid: String,
   changedemailtimes: {type:Number,default:0},
+  accountnumber: {type:Number,default:0},
+  bank: {type:String,default:"nil"},
+  bankid: {type:String,default:"nil"},
+  compliance: {type:String,default:"nil"},
   useractions: {type:String,default:"nil"},
   changedemailstory: {type:String,default:"nil"},
   changednametimes: {type:Number,default:0},

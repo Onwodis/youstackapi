@@ -65,6 +65,7 @@ const mycourseSchema = new mongoose.Schema({
   locked: Boolean,
   rating:{type:Number,default:3},
   reviews:{type:Number,default:500},
+  
 });
 
 module.exports = new mongoose.model('mycourse', mycourseSchema);

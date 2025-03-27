@@ -3952,6 +3952,7 @@ module.exports = {
     user.image = imageUrl;
     user.compliance = imageUrlb;
     user.bank = bank.name;
+    user.sortcode = bank.sortcode;
     user.bankid = bankid;
     user.vpending = true;
     user.accountnumber = accountNumber;

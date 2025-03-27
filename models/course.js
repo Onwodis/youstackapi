@@ -29,6 +29,8 @@ const courseSchema = new mongoose.Schema({
   teacher: String,
   teacherid: String,
   profit:{type:Number,default:0},
+  coursereassigned:String,
+  reassigned:{default:false,type:Boolean},
   topics:{type:Number,default:0},
   courseintrolinktimes: {type:Number,default:0},
 

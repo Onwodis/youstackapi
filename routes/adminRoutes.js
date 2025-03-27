@@ -27,8 +27,13 @@ router.get("/deletecategory", adminvalid, adminController.deletecategory);
 router.get("/getactions", adminvalid, adminController.getactions);
 router.get("/updatetimeout", adminvalid, adminController.updatetimeout);
 router.get("/search", adminvalid, adminController.search);
+router.get("/assigntutor", adminvalid, adminController.assigntutor);
+router.get("/switchcategory", adminvalid, adminController.switchcategory);
 router.post("/updatecategory", adminvalid, adminController.updatecategory);
 router.post("/newcategory", adminvalid, adminController.newcategory);
+// router.post("/finalsign", adminvalid, adminController.finalsign);
+router.post('/changename', adminvalid, adminController.changename);
+router.post('/changephone', adminvalid, adminController.changephone);
 
 
 module.exports = router;

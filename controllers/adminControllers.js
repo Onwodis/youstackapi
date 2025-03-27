@@ -2895,6 +2895,10 @@ const getAccountBalance = async () => {
 };
 const { promisify } = require('util');
 const unlinkAsync = promisify(fs.unlink);
+function replace(a, b, c) {
+  return c.split(a).join(b);
+}
+
 
 module.exports = {
   Home: async (req, res) => {
@@ -3278,7 +3282,7 @@ module.exports = {
 
     console.table(laws);
 
-    res.json({ data, transactions, laws, success: true });
+    res.json({ data, transactions, user, laws, success: true });
   },
 
   deploy: async (req, res) => {
@@ -3416,12 +3420,12 @@ module.exports = {
   newcategory: async (req, res) => {
     try {
       let { name, page, limit, desc } = req.body;
-      name=capitalise(name)
+      name = capitalise(name);
       limit = Number(limit);
       page = Number(page);
       console.log(page, limit, desc, name);
       if (!req.files || !req.files.image) {
-        console.log("No image file uploaded")
+        console.log('No image file uploaded');
         return res
           .status(400)
           .json({ success: false, error: 'No image file uploaded' });
@@ -3429,27 +3433,26 @@ module.exports = {
 
       const user = req.user;
 
-      let ress = ` created a new category by the name ${name}`
+      let ress = ` created a new category by the name ${name}`;
 
       const image = req.files.image;
       const uploadDir = path.join(__dirname, '..', 'public', 'categories');
 
-    
-      const newImageName = `${`from`}-${name.substring(0,4)}.${image.name.split('.')[1]}`;
+      const newImageName = `${`from`}-${name.substring(0, 4)}.${
+        image.name.split('.')[1]
+      }`;
       const newImagePath = path.join(uploadDir, newImageName);
- 
-      const filename = newImageName
 
+      const filename = newImageName;
 
-     
       fs.writeFileSync(newImagePath, image.data);
 
       // Update category image URL
       const imageUrl = `${process.env.api}categories/${newImageName}`;
-      const catid = "nc"+ getserialnum(100000)
+      const catid = 'nc' + getserialnum(100000);
 
       await Category.create({
-        category:name,
+        category: name,
         dateadded: currentDate(),
         name: name,
         catid: catid,
@@ -3457,10 +3460,8 @@ module.exports = {
         desc: desc,
         ordstring: new Date(),
         createdby: user.email,
-        image:imageUrl,
-     
-      })
-    
+        image: imageUrl,
+      });
 
       const actionid = 'act' + getserialnum(100000);
       const opid = 'op' + getserialnum(100000);
@@ -3515,7 +3516,7 @@ module.exports = {
         masterimage: user.image,
         slaveimage: imageUrl,
         ordstring: new Date(),
-        ifhost:user.host,
+        ifhost: user.host,
         actiontype: 'admin to category',
       });
 
@@ -3761,16 +3762,16 @@ module.exports = {
   },
   deletecategory: async (req, res) => {
     try {
-      let { catid,limit ,page } = req.query
+      let { catid, limit, page } = req.query;
       limit = Number(limit);
       page = Number(page);
       console.log(catid);
-      const cat = await Category.findOne({catid})
+      const cat = await Category.findOne({ catid });
 
       const user = req.user;
-      const cl =cat
-  
-      let ress =  ` deleted category ${cat.name}`
+      const cl = cat;
+
+      let ress = ` deleted category ${cat.name}`;
       const nnamer = cat.image.split('/');
       const filename = nnamer[nnamer.length - 1];
       console.log(filename + ' is cat imag');
@@ -3789,9 +3790,6 @@ module.exports = {
       } catch (error) {
         console.log("couldn't delete previous image");
       }
-
-
-    
 
       const actionid = 'act' + getserialnum(100000);
       const opid = 'op' + getserialnum(100000);
@@ -3820,7 +3818,9 @@ module.exports = {
 
       user.useractions = useractions;
       await user.save();
-      const slavestory = `${capitalise(cat.name)} was ${ress} by ${capitalise(user.name)}`;
+      const slavestory = `${capitalise(cat.name)} was ${ress} by ${capitalise(
+        user.name
+      )}`;
       const masterstory = `I ${ress} for category ${capitalise(cat.name)}`;
 
       await Action.create({
@@ -3847,8 +3847,8 @@ module.exports = {
         ifhost: !!user.host,
         actiontype: 'admin to category',
       });
-      await Category.deleteOne({catid})
-
+      lic();
+      await Category.deleteOne({ catid });
 
       // Pagination
       page = parseInt(page) || 1;
@@ -3901,7 +3901,6 @@ module.exports = {
     }
   },
 
- 
   licenseteacher: async (req, res) => {
     let { userid } = req.params;
     const cl = await User.findOne({ userid });
@@ -4252,15 +4251,257 @@ module.exports = {
       success: true,
     });
   },
+  switchcategory: async (req, res) => {
+    const { cid, catid } = req.query;
+    const user = req.user;
+    console.log(cid + ' is cidn');
+    const course = await Course.findOne({ cid });
+    const occ = course.toObject();
+    const oldcos = JSON.parse(JSON.stringify(occ));
+    const category = await Category.findOne({ catid });
+
+    if (course) {
+      const allmy = await Mycourse.find({ catid: course.catid });
+      if (allmy && allmy.length > 0) {
+        for (let i = 0; i < allmy.length; i++) {
+          const mys = allmy[i];
+          mys.category = category.name;
+          mys.catid = catid;
+          await mys.save();
+        }
+      }
+
+      const did = `${req.user.name} moved ${course.name} (course)  from ${
+        oldcos.category
+      } to ${category.name} category on ${currentDate()}`;
+      course.category = category.name;
+      course.catid = catid;
+      await course.save();
+
+      const allcats = await Category.find();
+      if (allcats && allcats.length > 0) {
+        for (let i = 0; i < allcats.length; i++) {
+          const catt = allcats[i];
+          const coslength = await Course.countDocuments({ catid: catt.catid });
+          const boughtcourses = await Mycourse.countDocuments({
+            catid: catt.catid,
+          });
+          catt.courses = coslength;
+          catt.boughtcourses = boughtcourses;
+          await catt.save();
+        }
+      }
+
+      let ress = did;
+      // this a crucial setup that can lead to recursive error if logic is not scrutinized
+
+      const actionid = 'act' + getserialnum(100000);
+      const opid = 'op' + getserialnum(100000);
+      const when = currentDate();
+      const story = `${ress}`;
+      let actionstory = ` ${ress} ,this was done on ${currentDate()}`;
+
+      // Append new action story properly
+      let useractions =
+        user.useractions.length > 6
+          ? user.useractions + '%%' + actionstory
+          : actionstory;
+
+      // Split into array
+      let actionsarray = useractions.split('%%');
+
+      // Keep only the latest 10 actions
+      if (actionsarray.length > 50) {
+        actionsarray = actionsarray.slice(actionsarray.length - 50);
+      }
+
+      // Reconstruct `useractions`
+      useractions = actionsarray.join('%%');
+
+      user.useractions = useractions;
+      await user.save();
+      const slavestory = did;
+      const masterstory = `I ${ress}`;
+
+      await Action.create({
+        master: user.name,
+        masterid: user.userid,
+        slave: course.name,
+        slaveid: course.catid,
+        actionid,
+        serious: true,
+        opid,
+        mandy: mandy(),
+        dmy: mandy(),
+        when,
+        masterfirstemail: user.firstemail,
+        slavefirstemail: course.name,
+        slavestory,
+        story,
+        masterstory,
+        mastertype: user.type,
+        slavetype: 'category',
+        masterimage: user.image,
+        slaveimage: course.image,
+        ordstring: new Date(),
+        ifhost: user.host,
+        actiontype: 'course re-assignment',
+      });
+      lic();
+
+      const topics = await Topic.find({ cid }).sort({ sn: 1 }).lean();
+      const tutors = await User.find({
+        isTeacher: true,
+        userid: { $ne: course.teacherid },
+      })
+        .sort({ name: 1 })
+        .lean();
+      const xcats = await Category.find({ catid: { $ne: course.catid } })
+        .sort({ name: 1 })
+        .lean();
+      if (topics && topics.length > 0) {
+        console.log(course.name + ' is course');
+        res.json({ success: true, course, topics, tutors, xcats });
+      } else {
+        const courses = await Course.find().limit(12).sort({ ordstring: -1 });
+        res.json({ error: true, courses });
+      }
+    } else {
+      const courses = await Course.find().limit(12).sort({ ordstring: -1 });
+      res.json({ error: true, courses });
+    }
+  },
+  assigntutor: async (req, res) => {
+    const { cid, tuid } = req.query;
+    const user = req.user;
+    console.log(cid + ' is cidn');
+    const course = await Course.findOne({ cid });
+    const occ = course.toObject();
+    const oldcos = JSON.parse(JSON.stringify(occ));
+    if (course) {
+      const teacher = await User.findOne({ userid: tuid });
+
+      const did = `${req.user.name} re-assigned ${
+        course.name
+      } (course) tutor from ${oldcos.teacher} to ${
+        teacher.name
+      } on ${currentDate()}`;
+      course.teacher = teacher.name;
+      course.teacherid = tuid;
+      course.tid = tuid;
+      course.reassigned = true;
+      course.coursereassigned = did;
+
+      await course.save();
+
+      const coslength = await Course.countDocuments({ teacherid: tuid });
+      teacher.courses = coslength;
+      await teacher.save();
+      let allts = await User.find({ isTeacher: true });
+      for (let i = 0; i < allts.length; i++) {
+        const tt = allts[i];
+        let allc = await Course.countDocuments({ teacherid: tt.userid });
+        tt.courses = allc;
+        await tt.save();
+      }
+
+      let ress = did;
+      // this a crucial setup that can lead to recursive error if logic is not scrutinized
+
+      const actionid = 'act' + getserialnum(100000);
+      const opid = 'op' + getserialnum(100000);
+      const when = currentDate();
+      const story = `${ress}`;
+      let actionstory = ` ${ress} ,this was done on ${currentDate()}`;
+
+      // Append new action story properly
+      let useractions =
+        user.useractions.length > 6
+          ? user.useractions + '%%' + actionstory
+          : actionstory;
+
+      // Split into array
+      let actionsarray = useractions.split('%%');
+
+      // Keep only the latest 10 actions
+      if (actionsarray.length > 50) {
+        actionsarray = actionsarray.slice(actionsarray.length - 50);
+      }
+
+      // Reconstruct `useractions`
+      useractions = actionsarray.join('%%');
+
+      user.useractions = useractions;
+      await user.save();
+      const slavestory = did;
+      const masterstory = `I ${ress}`;
+
+      await Action.create({
+        master: user.name,
+        masterid: user.userid,
+        slave: course.name,
+        slaveid: course.catid,
+        actionid,
+        serious: true,
+        opid,
+        mandy: mandy(),
+        dmy: mandy(),
+        when,
+        masterfirstemail: user.firstemail,
+        slavefirstemail: course.name,
+        slavestory,
+        story,
+        masterstory,
+        mastertype: user.type,
+        slavetype: 'category',
+        masterimage: user.image,
+        slaveimage: course.image,
+        ordstring: new Date(),
+        ifhost: user.host,
+        actiontype: 'course re-assignment',
+      });
+      lic();
+
+      const topics = await Topic.find({ cid }).sort({ sn: 1 }).lean();
+      const tutors = await User.find({
+        isTeacher: true,
+        userid: { $ne: course.teacherid },
+      })
+        .sort({ name: 1 })
+        .lean();
+      const xcats = await Category.find({ catid: { $ne: course.catid } })
+        .sort({ name: 1 })
+        .lean();
+      if (topics && topics.length > 0) {
+        console.log(course.name + ' is course');
+        res.json({ success: true, course, topics, tutors, xcats });
+      } else {
+        const courses = await Course.find().limit(12).sort({ ordstring: -1 });
+        res.json({ error: true, courses });
+      }
+    } else {
+      const courses = await Course.find().limit(12).sort({ ordstring: -1 });
+      res.json({ error: true, courses });
+    }
+  },
   admingetcourse: async (req, res) => {
     const cid = req.params.cid;
-    console.log(cid + ' is cid');
+    console.log(cid + ' is cidn');
     const course = await Course.findOne({ cid }).lean();
     if (course) {
       const topics = await Topic.find({ cid }).sort({ sn: 1 }).lean();
-      if (topics && topics.length > 2) {
+      const tutors = await User.find({
+        isTeacher: true,
+        userid: { $ne: course.teacherid },
+      })
+        .sort({ name: 1 })
+        .lean();
+      const xcats = await Category.find({ catid: { $ne: course.catid } })
+        .sort({ name: 1 })
+        .lean();
+      if (topics && topics.length > 0) {
         console.log(course.name + ' is course');
-        res.json({ success: true, course, topics });
+        res.json({ success: true, course, topics, tutors, xcats });
       } else {
         const courses = await Course.find().limit(12).sort({ ordstring: -1 });
         res.json({ error: true, courses });
@@ -4326,5 +4567,155 @@ module.exports = {
       currentPage: Number(page),
       sum: count,
     });
+  },
+  changephone: async (req, res) => {
+    let { phone } = req.body;
+    phone = capitalise(phone) || phone;
+    const user = req.user;
+    console.log(phone + ' is phone ' + user.email);
+
+    let actionstory = `${user.name} changed phone number from ${
+      user.phone ?user.phone:"empty"
+    } to ${phone}, this is the ${ord(
+      user.changedphonetimes + 1
+    )} time he/she is changing phone number, this was done on ${currentDate()}`;
+
+    // Append new action story properly
+    let useractions =
+      user.useractions.length > 6
+        ? user.useractions + '%%' + actionstory
+        : actionstory;
+
+    // Split into array
+    let actionsarray = useractions.split('%%');
+
+    // Keep only the latest 10 actions
+    if (actionsarray.length > 50) {
+      actionsarray = actionsarray.slice(actionsarray.length - 50);
+    }
+
+    // Reconstruct `useractions`
+    useractions = actionsarray.join('%%');
+    user.changedphonetimes = user.changedphonetimes + 1;
+    user.changedphonestory = actionstory;
+    user.phone = phone;
+    user.useractions = useractions;
+    const opid = 'op' + getserialnum(100000);
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    await user.save();
+    await Action.create({
+      master: user.name,
+      masterid: user.userid,
+      slave: 'youstack',
+      ip,
+      slaveid: 'youstackid',
+      actionid: 'act' + getserialnum(1000),
+      opid,
+      mandy: mandy(),
+      dmy: mandy(),
+      when: currentDate(),
+
+      masterfirstemail: user.firstemail,
+      slavefirstemail: ' youstack email',
+      slavestory: actionstory,
+      story: actionstory,
+      masterstory: actionstory,
+      mastertype: user.type,
+      slaveype: 'youstack',
+      masterimage: user.image,
+      slaveimage: '',
+      ordstring: new Date(),
+      ifhost:user.host,
+      actiontype: 'teacher to youstack',
+    });
+
+    res.json({ success: true, user: user });
+  },
+  changename: async (req, res) => {
+    let { name } = req.body;
+    name = capitalise(name);
+    const user = req.user;
+    console.log(name + ' is name ' + user.email);
+    const allactions = await Action.find({ masterid: user.userid });
+    if (allactions && allactions.length > 0) {
+      for (let i = 0; i < allactions.length; i++) {
+        const action = allactions[i];
+        const newstory = replace(user.name, name, action.story);
+        const newmaster = replace(user.name, name, action.master);
+        action.story = newstory;
+        action.master = newmaster;
+        await action.save();
+      }
+    }
+    const alltrans = await Transact.find({ userid: user.userid });
+    if (alltrans && alltrans.length > 0) {
+      for (let i = 0; i < alltrans.length; i++) {
+        const action = alltrans[i];
+
+        action.name = name;
+        await action.save();
+      }
+    }
+    
+    let actionstory = `${name} changed name from ${
+      user.name
+    } to ${name}, this is the ${ord(
+      user.changednametimes + 1
+    )} name change by ${name} (formerly ${
+      user.name
+    }), this was done on ${currentDate()}`;
+
+    // Append new action story properly
+    let useractions =
+      user.useractions.length > 6
+        ? user.useractions + '%%' + actionstory
+        : actionstory;
+
+    // Split into array
+    let actionsarray = useractions.split('%%');
+
+    // Keep only the latest 10 actions
+    if (actionsarray.length > 50) {
+      actionsarray = actionsarray.slice(actionsarray.length - 50);
+    }
+
+    // Reconstruct `useractions`
+    useractions = actionsarray.join('%%');
+    user.changednametimes = user.changednametimes + 1;
+    user.changednamestory = actionstory;
+    user.name = name;
+    user.useractions = useractions;
+    const opid = 'op' + getserialnum(100000);
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    await user.save();
+    await Action.create({
+      master: user.name,
+      masterid: user.userid,
+      slave: 'youstack',
+      ip,
+      slaveid: 'youstackid',
+      actionid: 'act' + getserialnum(1000),
+      opid,
+      mandy: mandy(),
+      dmy: mandy(),
+      when: currentDate(),
+
+      masterfirstemail: user.firstemail,
+      slavefirstemail: ' youstackemail',
+      slavestory: actionstory,
+      story: actionstory,
+      masterstory: actionstory,
+      mastertype: user.type,
+      slaveype: 'youstack',
+      masterimage: user.image,
+      slaveimage: '',
+      ordstring: new Date(),
+      ifhost: false,
+      actiontype: 'teacher to youstack',
+    });
+
+    res.json({ success: true, user: user });
   },
 };

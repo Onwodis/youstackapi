@@ -97,6 +97,8 @@ const userSchema = new mongoose.Schema({
   javexpiry: Date,
   paytime: String,
   logindmy: String,
+  catid: String,
+  category: String,
   logindmytimes: Number,
   bcourses: {type:Number,default:0},
 

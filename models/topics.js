@@ -16,8 +16,8 @@ const getlink =()=>{
 
 }
 const Getd = async ()=>{
-  const ddata = await Data.findOne({isdata:true})
-  return ddata.videoid
+
+  return process.env.videoid
 }
 
 console.log(getlink() + "  is free random video link")

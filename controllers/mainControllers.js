@@ -1,6 +1,7 @@
 const User = require('../models/user');
 const { Vimeo } = require('vimeo');
-
+const path = require('path');
+const fs = require('fs');
 const Transact = require('../models/transaction');
 const Teatransact = require('../models/teatrans');
 const Teacher = require('../models/teacher');
@@ -1676,33 +1677,58 @@ const reactIntroductionTest = [
     ],
   },
 ];
+const deleteFilesInFolder = (folderPath) => {
+  fs.readdir(folderPath, (err, files) => {
+    if (err) {
+      console.error(`Error reading folder ${folderPath}:`, err);
+      return;
+    }
+
+    files.forEach((file) => {
+      const filePath = path.join(folderPath, file);
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.error(`Error deleting file ${filePath}:`, err);
+        } else {
+          console.log(`Deleted: ${filePath}`);
+        }
+      });
+    });
+  });
+};
+
+const publicPath = path.join(__dirname, '..', 'public');
+const categoriesPath = path.join(publicPath, 'categories');
+const courseImagesPath = path.join(publicPath, 'courseimages');
+const compliancePath = path.join(publicPath, 'compliance');
+
 const categg = [
   {
     name: 'Web development',
     ccid: 1,
-    image: 'webdev.jpg',
+    image: 'web.jpeg',
     catid: 'categ4565768',
     desc: 'Learn various web development methodologies',
   },
   {
     name: 'Business',
     ccid: 2,
-    image: 'business.jpg',
-    catid: 'cate1234568',
+    image: 'business.jpeg',
+    catid: 'cate14349877',
     desc: 'Learn various Business methodologies',
   },
   {
     name: 'Marketing',
     ccid: 3,
-    image: 'marketing.jpg',
-    catid: 'categ40033768',
+    image: 'marketing.jpeg',
+    catid: 'ca40033768',
     desc: 'Learn various Marketing methodologies',
   },
   {
     name: 'Design',
     ccid: 4,
-    image: 'design.jpg',
-    catid: 'categ45853768',
+    image: 'design.jpeg',
+    catid: 'cat46311768',
     desc: 'Learn various Design methodologies',
   },
 ];
@@ -2431,29 +2457,38 @@ const dropyou = async () => {
 };
 
 const resetb = async (req, res) => {
-  const ddata = await Data.findOne({ isdata: true });
-  // dropyou()
+  deleteFilesInFolder(categoriesPath);
+  deleteFilesInFolder(courseImagesPath);
+  deleteFilesInFolder(compliancePath);
 
   let email = process.env.sam_email;
 
   let resettimes = 0;
+  await Data.deleteMany();
+  await Data.create({ isdata: true });
 
-  const getdata = await Data.findOne({ isdata: true });
-  resettimes = getdata.resettimes;
+  const ddata = await Data.findOne({ isdata: true });
+
+  resettimes = ddata.resettimes;
+  ddata.videoid = process.env.videoid;
+  await ddata.save();
 
   await User.deleteMany();
 
   await Course.deleteMany();
+  await Mycourse.deleteMany();
 
   await Teacher.deleteMany();
   await Bank.deleteMany();
   await Category.deleteMany();
   // await Action.deleteMany();
   await Actionb.deleteMany();
+  await Action.deleteMany();
 
   await Topic.deleteMany();
   // await Curri.deleteMany();
   await Transact.deleteMany();
+  await Teatransact.deleteMany();
 
   const hpwrda = await bcrypt.hash('cdr112233', 10);
   const ta = {
@@ -2753,7 +2788,7 @@ const resetb = async (req, res) => {
       ccid: catg.ccid,
       teacherid: tid,
       mstudents: 0,
-      introid: ddata.videoid,
+      introid: process.env.videoid,
       locked: false,
       addedbytype: 'youstack',
       addedby: 'youstack',
@@ -2778,9 +2813,9 @@ const resetb = async (req, res) => {
       drev: money(0),
       rev: 0,
       drev: money(0),
-      price: 300000,
+      price: 10000,
       deployed: true,
-      dprice: money(300000),
+      dprice: money(10000),
       ordstring: new Date(),
       created: new Date(),
       createddate: currentDate(),
@@ -2804,7 +2839,7 @@ const resetb = async (req, res) => {
         editedby: 'nil',
         lastedit: 'nil',
         lasteditby: 'nil',
-        videoid: ddata.videoid,
+        videoid: i % 2 == 0 ? process.env.videoid : '',
         vlink: getlink(),
         lastedittime: 'nil',
         timesedited: 0,
@@ -2843,7 +2878,7 @@ const resetb = async (req, res) => {
       desc: cato.desc,
       ordstring: new Date(),
       createdby: email,
-      image: process.env.api + `categories/${cato.image}`,
+      image: process.env.api + `defcats/${cato.image}`,
     });
   }
 
@@ -2855,7 +2890,7 @@ const resetb = async (req, res) => {
   const actionid = 'act' + getserialnum(100000);
   const opid = 'op' + getserialnum(100000);
   const story = `${who} reset youstack on ${currentDate()} the ${ord(
-    getdata.usereset + 1
+    ddata.usereset + 1
   )} time`;
   const slavestory = `youstack was reset by ${who} on ${currentDate()}`;
   const masterstory = `I reset youstack on ${currentDate()}`;
@@ -2924,12 +2959,12 @@ const resetb = async (req, res) => {
     cudaccess: true,
     userid: 'adm' + getserialnum(10000),
   });
-  getdata.launchedparam = process.env.launchedparam;
-  getdata.usereset = getdata.usereset + 1;
-  getdata.lastreset = currentDate();
-  getdata.lastresetby = email;
-  getdata.videoid = '1065018522';
-  await getdata.save();
+  ddata.launchedparam = process.env.launchedparam;
+  ddata.usereset = ddata.usereset + 1;
+  ddata.lastreset = currentDate();
+  ddata.lastresetby = email;
+  ddata.videoid = process.env.videoid;
+  await ddata.save();
   gradecat();
   console.log('reset done');
 };
@@ -3040,18 +3075,17 @@ const getAccountBalance = async () => {
     return 'Error retrieving balance';
   }
 };
-const Getinitials = (name)=>{
-  if(name.includes(" ")){
-    const array = name.split(" ")
-    let initials =array[0].charAt(0) + array[1].charAt(0)
-    return initials.toUpperCase()
+const Getinitials = (name) => {
+  if (name.includes(' ')) {
+    const array = name.split(' ');
+    let initials = array[0].charAt(0) + array[1].charAt(0);
+    return initials.toUpperCase();
+  } else {
+    let initials = name.charAt(0) + name.charAt(1);
+    return initials.toUpperCase();
   }
-  else{
-    let initials =name.charAt(0) + name.charAt(1)
-    return initials.toUpperCase()
-  }
-}
-console.log(Getinitials("taiw") +" is initials")
+};
+console.log(Getinitials('taiw') + ' is initials');
 
 // Example Usage
 // console.log("account balance is "+ main())
@@ -3629,7 +3663,8 @@ module.exports = {
                 masterid: whichadmin.userid,
                 slave: 'youstack',
                 slaveid: 'youstackid',
-                actionid,ip,
+                actionid,
+                ip,
                 branch: user.branch,
                 brid: user.brid,
                 batch: user.batch,
@@ -3781,7 +3816,8 @@ module.exports = {
     const courses = await Course.find({
       deployed: true,
       name: new RegExp(name, 'i'),
-    }).skip(skip)
+    })
+      .skip(skip)
       .limit(12)
       .sort({ students: -1 });
 
@@ -3802,14 +3838,14 @@ module.exports = {
     const userid = 'YOU' + getserialnum(10000);
     const transid = 'TRN' + getserialnum(10000);
     const ddata = await Data.findOne({ isdata: true });
-    const youcent = ddata.youcent
+    const youcent = ddata.youcent;
 
     if (reference) {
       try {
         let sk = ddata.plive ? process.env.plive : process.env.ptest;
 
         console.log('is param reference ' + reference);
-     
+
         const response = await axios.get(
           `${process.env.paymentapi}${reference}`,
           {
@@ -3824,7 +3860,7 @@ module.exports = {
         let metadata = transactionData.metadata || {};
         if (typeof metadata === 'string') {
           try {
-            console.log(metadata + " is metadata")
+            console.log(metadata + ' is metadata');
             metadata = JSON.parse(metadata);
           } catch (err) {
             console.error('Error parsing metadata:', err.message);
@@ -3832,18 +3868,22 @@ module.exports = {
           }
         }
         let { name, email, pwrd, cids, phone, biz, address, amount } = metadata;
-        let initials = Getinitials(name)
-        
-        console.log(name, email, pwrd, cids, phone, biz, address, amount)
-    
+        let initials = Getinitials(name);
+
+        console.log(name, email, pwrd, cids, phone, biz, address, amount);
+
         // cids = JSON.parse(cids);
         const ab = getAccountBalance();
         const hpwrd = await bcrypt.hash(String(pwrd), 10);
         let tempcode = 'temp' + getserialnum(10000);
+        const ccatid = cids[cids.length -1]
+        const ccategory = await Category.findOne({catid:ccatid})
 
         await User.create({
-          name,initials,
-          email,lastlogin:currentDate(),
+          name,
+          initials,catid:ccatid,ccategory,
+          email,
+          lastlogin: currentDate(),
           tempcode,
           firstemail: email,
           address,
@@ -3873,23 +3913,25 @@ module.exports = {
         let coss = [];
         let cosss = [];
 
-        for (let i=0; i < cids.length; i++) {
+        for (let i = 0; i < cids.length; i++) {
           const cid = cids[i];
-          console.log("in here with "+  cid)
+          console.log('in here with ' + cid);
 
           const cos = await Course.findOne({ cid });
-          const teacher = await User.findOne({isTeacher: true,userid: cos.teacherid});
-          console.log(teacher.name + " is teacher")
+          const teacher = await User.findOne({
+            isTeacher: true,
+            userid: cos.teacherid,
+          });
+          console.log(teacher.name + ' is teacher');
           let aprofit = Math.ceil((youcent / 100) * cos.price);
           let tprofit = cos.price - aprofit;
           adminprofit = adminprofit + aprofit;
           teacherprofit = teacherprofit + tprofit;
           const teatransid = 'TTRN' + getserialnum(10000);
 
-
           await Mycourse.create({
             name: capitalise(cos.name),
-            tid:  cos.teacherid,
+            tid: cos.teacherid,
             userid,
             sname: name,
             semail: email,
@@ -3905,7 +3947,7 @@ module.exports = {
             youcent: youcent + '%',
 
             teacherid: cos.teacherid,
-            mstudents: cos.mstudents,
+            mstudents: cos.mstudents + 1,
 
             locked: false,
             addedbytype: `${name} on sign up`,
@@ -3940,21 +3982,29 @@ module.exports = {
           });
           await Teatransact.create({
             title: 'sign up payment for ' + cids.length + ' course(s)',
-            type: 'student',teatransid,youcent,ccid:cid,
-  
-            name,student:name,studentid:userid,teacherid:cos.teacherid,
-            teacher:cos.teacher,
+            type: 'student',
+            teatransid,
+            youcent,
+            ccid: cid,
+
+            name,
+            student: name,
+            studentid: userid,
+            teacherid: cos.teacherid,
+            teacher: cos.teacher,
             cname: cos.name,
-            cid,ip,
-            email,inflow:true,
+            cid,
+            ip,
+            email,
+            inflow: true,
             date: currentDate(),
             ordstring: new Date(),
             deposit: true,
-  
+
             finaltotal: amount,
             courses: cids.length,
             initialtotal: amount,
-            amount:cos.price,
+            amount: cos.price,
             aprofit,
             tprofit,
             damount: cos.dprice,
@@ -3964,29 +4014,31 @@ module.exports = {
             cdmy: dmy(),
             userid,
             mandy: mandy(),
-  
+
             firstamount: money(amount),
-  
-            oldamount:cos.price,
-            doldamount:cos.dprice,
-  
+
+            oldamount: cos.price,
+            doldamount: cos.dprice,
+
             firstpayment: true,
-  
+
             approvedby: ddata.plive ? 'paystack live' : 'paystack test',
-  
+
             order: 1,
             orderb: ord(1),
-  
+
             paidby: name,
             matno,
             paidbyid: userid,
           });
-          const bcourses = await Mycourse.countDocuments({teacherid:cos.teacherid})
+          const bcourses = await Mycourse.countDocuments({
+            teacherid: cos.teacherid,
+          });
           coss.push(cos.name);
           cosss.push(cos);
 
           teacher.profit = teacher.profit + tprofit;
-          teacher.bcourses =bcourses
+          teacher.bcourses = bcourses;
 
           teacher.dprofit = money(teacher.profit);
           teacher.profit_mandy =
@@ -3997,7 +4049,7 @@ module.exports = {
               : money(tprofit);
           teacher.mandy = mandy();
           await teacher.save();
-          const stds = await Mycourse.countDocuments({cid:cos.cid})
+          const stds = await Mycourse.countDocuments({ cid: cos.cid });
           cos.rev = cos.rev + cos.price;
           cos.drev = money(cos.rev);
           cos.mrev = cos.mandy === mandy() ? cos.mrev + cos.price : cos.price;
@@ -4005,14 +4057,17 @@ module.exports = {
           cos.profit = cos.profit + aprofit;
           cos.dprofit = money(cos.profit);
           cos.mandy = mandy();
-          cos.bought = true
-          cos.students =stds
+          cos.bought = true;
+          cos.students = stds;
           await cos.save();
 
-          const catcoss =  await Category.findOne({catid:cos.catid})
-          const catcosses = await Course.countDocuments({catid:cos.catid,bought:true})
-          catcoss.boughtcourses = catcosses
-          await catcoss.save()
+          const catcoss = await Category.findOne({ catid: cos.catid });
+          const catcosses = await Course.countDocuments({
+            catid: cos.catid,
+            bought: true,
+          });
+          catcoss.boughtcourses = catcosses;
+          await catcoss.save();
         }
 
         const strin = `<ol>
@@ -4025,8 +4080,8 @@ module.exports = {
         ddata.dinflow = money(ddata.inflow);
         ddata.dadminprofit = money(ddata.adminprofit);
         ddata.dteacherprofit = money(ddata.teacherprofit);
-        ddata.laststudentsignup = name
-        ddata.laststudentsignuptime = currentDate()
+        ddata.laststudentsignup = name;
+        ddata.laststudentsignuptime = currentDate();
 
         // month below
         ddata.adminprofit_mandy =
@@ -4053,7 +4108,8 @@ module.exports = {
           title: 'sign up payment for ' + cids.length + ' course(s)',
           type: 'student',
 
-          name,ip,
+          name,
+          ip,
 
           cname: JSON.stringify(coss),
           cid: JSON.stringify(cids),
@@ -4066,8 +4122,8 @@ module.exports = {
           courses: cids.length,
           initialtotal: amount,
           amount,
-          aprofit:adminprofit,
-          tprofit:teacherprofit,
+          aprofit: adminprofit,
+          tprofit: teacherprofit,
           damount: money(amount),
           reference,
           transid,
@@ -4090,7 +4146,8 @@ module.exports = {
 
           paidby: name,
           matno,
-          paidbyid: userid,youcent
+          paidbyid: userid,
+          youcent,
         });
         const subject = `Youstack :Course Payment Confirmation`;
         const subjectb = `Youstack :${name} just made a course/signup payment`;
@@ -4281,70 +4338,66 @@ module.exports = {
                     </body>
                     </html>`;
 
-        
-
-
         const ifsent = await nodemb.mail(email, subject, m1, '');
 
         if (ifsent) {
           console.log('sent after promise');
           const admins = await User.find({ admin: true });
-        
-          const user = await User.findOne({userid})
+
+          const user = await User.findOne({ userid });
 
           let actionstory = `${name} signed-up/bought ${coss} , this was done on ${currentDate()}`;
-          
-                    // Append new action story properly
-                    let useractions =
-                      user.useractions.length > 6
-                        ? user.useractions + '%%' + actionstory
-                        : actionstory;
-          
-                    // Split into array
-                    let actionsarray = useractions.split('%%');
-          
-                    // Keep only the latest 10 actions
-                    if (actionsarray.length > 50) {
-                      actionsarray = actionsarray.slice(actionsarray.length - 50);
-                    }
-          
-                    // Reconstruct `useractions`
-                    useractions = actionsarray.join('%%');
-          
-                    user.useractions = useractions;
-                    await user.save();
-          
-                    const opid = 'op' + getserialnum(100000);
-                    const ip =
-                      req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-          
-                    await Action.create({
-                      master: user.name,
-                      masterid: user.userid,
-                      slave:"youstack",
-                      ip,
-                      slaveid: userid,
-                      actionid: 'act' + getserialnum(1000),
-                      opid,
-                      mandy: mandy(),
-                      dmy: mandy(),
-                      when: currentDate(),
-          
-                      masterfirstemail: user.firstemail,
-                      slavefirstemail:"youstack",
-                      slavestory: actionstory,
-                      story: actionstory,
-                      masterstory: actionstory,
-                      mastertype: "student",
-                      slaveype: 'system',
-                      masterimage: user.image,
-                      slaveimage: '',
-                      ordstring: new Date(),
-                      ifhost: false,
-                      actiontype: 'student sign up on youstack',
-                    });
-                    lic();
-                    
+
+          // Append new action story properly
+          let useractions =
+            user.useractions.length > 6
+              ? user.useractions + '%%' + actionstory
+              : actionstory;
+
+          // Split into array
+          let actionsarray = useractions.split('%%');
+
+          // Keep only the latest 10 actions
+          if (actionsarray.length > 50) {
+            actionsarray = actionsarray.slice(actionsarray.length - 50);
+          }
+
+          // Reconstruct `useractions`
+          useractions = actionsarray.join('%%');
+
+          user.useractions = useractions;
+          await user.save();
+
+          const opid = 'op' + getserialnum(100000);
+          const ip =
+            req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+          await Action.create({
+            master: user.name,
+            masterid: user.userid,
+            slave: 'youstack',
+            ip,
+            slaveid: userid,
+            actionid: 'act' + getserialnum(1000),
+            opid,
+            mandy: mandy(),
+            dmy: mandy(),
+            when: currentDate(),
+
+            masterfirstemail: user.firstemail,
+            slavefirstemail: 'youstack',
+            slavestory: actionstory,
+            story: actionstory,
+            masterstory: actionstory,
+            mastertype: 'student',
+            slaveype: 'system',
+            masterimage: user.image,
+            slaveimage: '',
+            ordstring: new Date(),
+            ifhost: false,
+            actiontype: 'student sign up on youstack',
+          });
+          lic();
 
           for (let i = 0; i < admins.length; i++) {
             const adm = admins[i];
@@ -4352,16 +4405,14 @@ module.exports = {
           }
           const frontend = `${process.env.fe}#/successuser/${user.userid}`;
 
-          console.log('Transaction Metadata:',frontend);
-          res.json({success :true,user});
-
+          console.log('Transaction Metadata:', frontend);
+          res.json({ success: true, user });
         } else {
           console.log('there was a problem sending this mail');
           return res.json({ success: true, problem: true });
         }
-        
       } catch (err) {
-        console.log('error moving on '+ err.message);
+        console.log('error moving on ' + err.message);
       }
       // http://localhost:5000/frompaystack/j10584?trxref=j10584&reference=j10584
     } else {
@@ -4405,12 +4456,12 @@ module.exports = {
         amount = amount + cos.price;
       }
     }
-    amount= ddata.plive ?amount :250000
+    // amount = ddata.plive ? amount : 250000;
     if (amount < 1) {
       res.json({ success: true, fraud: true });
     } else {
-      const meta = JSON.stringify(
-        {name,
+      const meta = JSON.stringify({
+        name,
         email,
         pwrd,
         cids,
@@ -4418,8 +4469,8 @@ module.exports = {
         biz,
         cids,
         amount,
-        address}
-      );
+        address,
+      });
 
       const ifstud = await User.findOne({ email });
       name = cap(name);
@@ -4435,7 +4486,6 @@ module.exports = {
           cids,
           ref,
         });
-
 
         // const ref = await User.findOne({ host: true });
         // const SECRET_KEY = comm.paystackkey;

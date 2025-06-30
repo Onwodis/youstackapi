@@ -2,8 +2,7 @@
 
 ![YouStack Demo](https://youstack.netlify.app)
 
-> A unified dashboard to discover, organize, and manage your favorite resources—code snippets, articles, tutorials, and more—all in one place.
-
+> An educative e-learning platform tailored with udemy standard in mind .
 🔗 **Live Demo:** [https://youstack.netlify.app](https://youstack.netlify.app)
 
 ---
